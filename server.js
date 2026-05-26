@@ -32,28 +32,29 @@ function readLocalDB() {
 
 async function readDB() {
   if (!USE_BLOB) return readLocalDB();
-  try {
-    // Try the cached URL first
-    if (cachedDbUrl) {
-      const res = await fetch(cachedDbUrl + '?t=' + Date.now());
-      if (res.ok) return await res.json();
-      cachedDbUrl = null;
-    }
-    // Find the blob by prefix
-    const { blobs } = await list({ prefix: 'db/data.json' });
-    if (blobs.length > 0) {
-      cachedDbUrl = blobs[0].url;
-      const res = await fetch(cachedDbUrl + '?t=' + Date.now());
-      if (res.ok) return await res.json();
-    }
+
+  // Try the cached URL first
+  if (cachedDbUrl) {
+    const res = await fetch(cachedDbUrl + '?t=' + Date.now());
+    if (res.ok) return await res.json();
+    cachedDbUrl = null;
+  }
+
+  // Find the blob by prefix
+  const { blobs } = await list({ prefix: 'db/data.json' });
+
+  if (blobs.length === 0) {
     // First deploy: seed blob from the data.json bundled in the repo
     const local = readLocalDB();
     await writeDB(local);
     return local;
-  } catch (e) {
-    console.error('readDB error:', e);
-    return readLocalDB();
   }
+
+  // Blob exists — fetch it; throw on failure so we never overwrite with stale local data
+  cachedDbUrl = blobs[0].url;
+  const res = await fetch(cachedDbUrl + '?t=' + Date.now());
+  if (!res.ok) throw new Error(`readDB: blob fetch failed (${res.status})`);
+  return res.json();
 }
 
 async function writeDB(data) {

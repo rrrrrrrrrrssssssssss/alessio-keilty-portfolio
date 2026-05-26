@@ -234,6 +234,10 @@ async function uploadFiles(files) {
       method: 'POST',
       body: formData
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Errore server ${res.status}`);
+    }
     const newImgs = await res.json();
     placeholder.remove();
 
