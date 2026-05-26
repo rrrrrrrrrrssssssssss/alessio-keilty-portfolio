@@ -205,7 +205,7 @@ app.post('/api/projects/:id/images', upload.array('images', 200), wrap(async (re
 
   let inserted;
   if (USE_BLOB) {
-    inserted = await Promise.all(req.files.map(async (f) => {
+    inserted = await Promise.all(req.files.map(async (f, i) => {
       const ext  = path.extname(f.originalname).toLowerCase();
       const name = `images/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
       const blob = await put(name, f.buffer, {
@@ -214,7 +214,7 @@ app.post('/api/projects/:id/images', upload.array('images', 200), wrap(async (re
         allowOverwrite: true,
         contentType: f.mimetype
       });
-      return { id: nextImgId++, filename: blob.url, sort_order: nextOrder++ };
+      return { id: nextImgId + i, filename: blob.url, sort_order: nextOrder + i };
     }));
   } else {
     inserted = req.files.map(f => ({
