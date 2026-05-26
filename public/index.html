@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alessio Keilty</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- Top right: Index | Expand -->
+    <div id="top-bar">
+      <span id="gallery-index-btn" role="button" tabindex="0">Index of the Photographic Gallery</span>
+      <span id="expand-btn" role="button" tabindex="0">Expand</span>
+    </div>
+
+    <!-- Main carousel -->
+    <div id="viewport">
+      <div id="track"></div>
+    </div>
+
+    <!-- Sidebar: counter sopra + filmstrip -->
+    <div id="sidebar-area">
+      <div id="sidebar-counter">
+        <span id="cur">01</span>
+        <span id="tot">/00</span>
+      </div>
+      <div id="sidebar">
+        <div id="sidebar-inner"></div>
+      </div>
+    </div>
+
+    <!-- Bottom bar -->
+    <div id="bottom-bar">
+      <div id="about-content">
+        <div class="contact-row"><span class="contact-label">M</span><a id="about-email" class="contact-link"></a></div>
+        <div class="contact-row"><span class="contact-label">IG</span><a id="about-instagram" class="contact-link" target="_blank" rel="noopener noreferrer"></a></div>
+        <div id="about-bio"></div>
+      </div>
+      <div id="bottom-row">
+        <span id="about-link" role="button" tabindex="0">About</span>
+        <div id="meta-group">
+          <span id="meta-back">Back to</span>
+          <span id="meta-client"></span>
+          <span id="meta-title"></span>
+          <span id="meta-desc"></span>
+        </div>
+      </div>
+      <div id="author-name">Alessio Keilty</div>
+    </div>
+
+    <!-- Index overlay -->
+    <div id="grid-overlay" hidden>
+      <div id="index-header">
+        <span id="index-title-btn">Index of the Photographic Gallery</span>
+        <span id="grid-close" role="button" tabindex="0">Back</span>
+      </div>
+      <div id="index-cols"></div>
+    </div>
+
+    <!-- Empty state -->
+    <div id="empty-state" hidden>
+      <p>Nessun contenuto.<br><a href="/admin">Vai all'admin</a> per aggiungere progetti.</p>
+    </div>
+
+  </div>
+  <script src="/main.js"></script>
+</body>
+</html>

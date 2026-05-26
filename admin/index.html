@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Alessio Keilty</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+  <!-- SortableJS for drag-and-drop -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+</head>
+<body>
+
+<div id="admin">
+
+  <!-- Left panel: project list -->
+  <aside id="sidebar">
+    <header id="sidebar-header">
+      <a href="/" target="_blank" id="site-link">← Vai al sito</a>
+      <button id="about-btn" class="btn-secondary">About</button>
+      <button id="new-project-btn" class="btn-primary">+ Nuovo progetto</button>
+    </header>
+    <ul id="project-list"></ul>
+  </aside>
+
+  <!-- Right panel: project editor -->
+  <main id="editor">
+    <button id="mobile-back-btn">← Progetti</button>
+    <div id="editor-empty">
+      <p>Seleziona un progetto dalla lista,<br>oppure creane uno nuovo.</p>
+    </div>
+
+    <div id="about-editor" hidden>
+      <div id="about-form-header">
+        <h2>About</h2>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Email (M)</label>
+          <input type="text" id="f-about-email" placeholder="info@example.com">
+        </div>
+        <div class="field">
+          <label>Instagram — nome visualizzato</label>
+          <input type="text" id="f-about-ig" placeholder="@username">
+        </div>
+        <div class="field">
+          <label>Instagram — link</label>
+          <input type="text" id="f-about-ig-url" placeholder="https://instagram.com/...">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Bio</label>
+          <textarea id="f-about-bio" rows="4" placeholder="Breve descrizione..."></textarea>
+        </div>
+      </div>
+      <div id="about-form-actions">
+        <button id="about-save-btn" class="btn-primary">Salva</button>
+        <span id="about-save-status"></span>
+      </div>
+    </div>
+
+    <div id="editor-form" hidden>
+      <div id="form-header">
+        <h2 id="form-title">Progetto</h2>
+        <button id="delete-project-btn" class="btn-danger" title="Elimina progetto">Elimina</button>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Titolo</label>
+          <input type="text" id="f-title" placeholder="es. Campaign SS24">
+        </div>
+        <div class="field">
+          <label>Cliente</label>
+          <input type="text" id="f-client" placeholder="es. Bally">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field field-sm">
+          <label>Anno</label>
+          <input type="text" id="f-year" placeholder="es. 2024">
+        </div>
+        <div class="field">
+          <label>Descrizione / Note</label>
+          <input type="text" id="f-desc" placeholder="es. Fashion Photography">
+        </div>
+      </div>
+
+      <div id="form-actions">
+        <button id="save-btn" class="btn-primary">Salva</button>
+        <span id="save-status"></span>
+      </div>
+
+      <!-- Images section -->
+      <div id="images-section">
+        <div id="images-header">
+          <span id="images-count">0 immagini</span>
+          <label id="upload-label" class="btn-secondary">
+            + Aggiungi immagini
+            <input type="file" id="file-input" multiple accept="image/*" hidden>
+          </label>
+        </div>
+
+        <!-- Drop zone -->
+        <div id="drop-zone">
+          <div id="image-grid"></div>
+          <div id="drop-hint">Trascina le immagini qui per caricarle</div>
+        </div>
+
+        <p class="hint">Trascina le immagini per riordinarle · Clicca la × per eliminarle</p>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<!-- Confirm dialog -->
+<div id="confirm-overlay" hidden>
+  <div id="confirm-box">
+    <p id="confirm-msg">Sei sicuro?</p>
+    <div id="confirm-actions">
+      <button id="confirm-yes" class="btn-danger">Elimina</button>
+      <button id="confirm-no" class="btn-secondary">Annulla</button>
+    </div>
+  </div>
+</div>
+
+<script src="/admin/admin.js"></script>
+</body>
+</html>

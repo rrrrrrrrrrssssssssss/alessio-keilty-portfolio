@@ -1,0 +1,355 @@
+{
+  "about": {
+    "email": "info@alessiokeilty.com",
+    "instagram": "@alessiokeilty",
+    "instagramUrl": "https://www.instagram.com/alessiokeilty/",
+    "bio": "Tiusant lita ellent inctoribus, unt molorempos exere lit, que ea explatquia quiam illaborent odi quatusa musciet pro occuptam idicabor sim quibus quunt moluptatume conseni menimi, es is vende aut fugit."
+  },
+  "projects": [
+    {
+      "id": 2,
+      "title": "The ibex of Cingino",
+      "client": "",
+      "year": "2025",
+      "description": "A lesson on how to defy gravity in search of electrolytes.",
+      "sort_order": 0,
+      "images": [
+        {
+          "id": 12,
+          "filename": "1779368470505-3pq79lv1zer.jpg",
+          "sort_order": 0
+        },
+        {
+          "id": 13,
+          "filename": "1779368470511-c7wctqw57nd.jpg",
+          "sort_order": 1
+        },
+        {
+          "id": 14,
+          "filename": "1779368470516-u7x7kfy0duc.jpg",
+          "sort_order": 2
+        },
+        {
+          "id": 15,
+          "filename": "1779368470521-k4oew78gh9i.jpg",
+          "sort_order": 3
+        },
+        {
+          "id": 17,
+          "filename": "1779368470555-itfj8byp0e9.jpg",
+          "sort_order": 5
+        },
+        {
+          "id": 18,
+          "filename": "1779368470556-brrilawksa.jpg",
+          "sort_order": 6
+        },
+        {
+          "id": 19,
+          "filename": "1779368470559-wff2vycsb5.jpg",
+          "sort_order": 7
+        },
+        {
+          "id": 20,
+          "filename": "1779368470569-3hf42cywg3f.jpg",
+          "sort_order": 8
+        },
+        {
+          "id": 21,
+          "filename": "1779368470570-me855quplg.jpg",
+          "sort_order": 9
+        },
+        {
+          "id": 22,
+          "filename": "1779368470571-tw2y7cwuz5.jpg",
+          "sort_order": 10
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Still life",
+      "client": "",
+      "year": "2025",
+      "description": "Koulis, Eleusis",
+      "sort_order": 1,
+      "images": [
+        {
+          "id": 23,
+          "filename": "1779370529357-m2juct5q1t.jpg",
+          "sort_order": 0
+        },
+        {
+          "id": 24,
+          "filename": "1779370529358-679on2sobbf.jpg",
+          "sort_order": 1
+        },
+        {
+          "id": 25,
+          "filename": "1779370529360-a8akc7ecb7u.jpg",
+          "sort_order": 2
+        },
+        {
+          "id": 26,
+          "filename": "1779370529362-9lwemyollf9.jpg",
+          "sort_order": 3
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "SS23 Campaign",
+      "client": "Bally",
+      "year": "2023",
+      "description": "",
+      "sort_order": 2,
+      "images": [
+        {
+          "id": 37,
+          "filename": "1779442964541-r770ytop28.jpg",
+          "sort_order": 0
+        },
+        {
+          "id": 38,
+          "filename": "1779442964543-o0xb4qvlgt.jpg",
+          "sort_order": 1
+        },
+        {
+          "id": 39,
+          "filename": "1779442964546-o9g03e7oves.jpg",
+          "sort_order": 2
+        },
+        {
+          "id": 40,
+          "filename": "1779442964547-zbn5701vge.jpg",
+          "sort_order": 3
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "MONOS",
+      "client": "",
+      "year": "2024",
+      "description": "Book",
+      "sort_order": 3,
+      "images": [
+        {
+          "id": 27,
+          "filename": "1779370673613-jorhbj1u6yf.jpg",
+          "sort_order": 3
+        },
+        {
+          "id": 28,
+          "filename": "1779370673614-3q06n5pj62h.jpg",
+          "sort_order": 4
+        },
+        {
+          "id": 29,
+          "filename": "1779370673615-37dgy2d63j2.jpg",
+          "sort_order": 9
+        },
+        {
+          "id": 30,
+          "filename": "1779370673615-t0h5ajmw579.jpg",
+          "sort_order": 1
+        },
+        {
+          "id": 31,
+          "filename": "1779370673617-i3miro06pxm.jpg",
+          "sort_order": 2
+        },
+        {
+          "id": 32,
+          "filename": "1779370673617-9fql0l23kis.jpg",
+          "sort_order": 5
+        },
+        {
+          "id": 33,
+          "filename": "1779370673618-1v5lboloiz1.jpg",
+          "sort_order": 6
+        },
+        {
+          "id": 34,
+          "filename": "1779370673621-1hojisadsp9.jpg",
+          "sort_order": 7
+        },
+        {
+          "id": 35,
+          "filename": "1779370673622-g4aniyr4xx9.jpg",
+          "sort_order": 0
+        },
+        {
+          "id": 36,
+          "filename": "1779370673623-jlwbmcvemlh.jpg",
+          "sort_order": 8
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Abstract spaces",
+      "client": "Bloc Studios",
+      "year": "2025",
+      "description": "",
+      "sort_order": 4,
+      "images": [
+        {
+          "id": 41,
+          "filename": "1779443365434-2wxcmjmttj4.jpg",
+          "sort_order": 2
+        },
+        {
+          "id": 42,
+          "filename": "1779443365435-kdedj30tb8m.jpg",
+          "sort_order": 1
+        },
+        {
+          "id": 43,
+          "filename": "1779443365436-lv2zixhet5.jpg",
+          "sort_order": 3
+        },
+        {
+          "id": 44,
+          "filename": "1779443365436-10wvkf57tkc.jpg",
+          "sort_order": 5
+        },
+        {
+          "id": 45,
+          "filename": "1779443365437-rxq8kmuewem.jpg",
+          "sort_order": 4
+        },
+        {
+          "id": 46,
+          "filename": "1779443365438-73vilzcbym5.jpg",
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Baltic birch plywood",
+      "client": "",
+      "year": "2026",
+      "description": "20×30×50cm Three boxes and a range of possibilities",
+      "sort_order": 6,
+      "images": [
+        {
+          "id": 47,
+          "filename": "1779443560407-ahkb1mhho2o.jpg",
+          "sort_order": 1
+        },
+        {
+          "id": 48,
+          "filename": "1779443560407-s69t4mnlad.jpg",
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "The old woman in the red dress",
+      "client": "",
+      "year": "2026",
+      "description": "",
+      "sort_order": 5,
+      "images": [
+        {
+          "id": 49,
+          "filename": "1779444393462-m6lx54xr358.jpg",
+          "sort_order": 2
+        },
+        {
+          "id": 50,
+          "filename": "1779444393465-8z3iyemhi9.jpg",
+          "sort_order": 1
+        },
+        {
+          "id": 51,
+          "filename": "1779444393468-zap7osjfc8d.jpg",
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Aa",
+      "client": "",
+      "year": "0000",
+      "description": "Lorem ipsum",
+      "sort_order": 7,
+      "images": [
+        {
+          "id": 52,
+          "filename": "1779444686204-kap2qur6htm.jpg",
+          "sort_order": 0
+        },
+        {
+          "id": 53,
+          "filename": "1779444686216-p3rk12m77tp.jpg",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Bb",
+      "client": "",
+      "year": "0000",
+      "description": "Lorem ipsum",
+      "sort_order": 8,
+      "images": [
+        {
+          "id": 54,
+          "filename": "1779444702988-yyga33aofyg.jpg",
+          "sort_order": 0
+        },
+        {
+          "id": 55,
+          "filename": "1779444703001-i33ywkdfitp.jpg",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Cc",
+      "client": "",
+      "year": "0000",
+      "description": "Lorem ipsum",
+      "sort_order": 9,
+      "images": [
+        {
+          "id": 56,
+          "filename": "1779444714097-2ed0x3rugsp.jpg",
+          "sort_order": 0
+        },
+        {
+          "id": 57,
+          "filename": "1779444714110-16yvbu09f81.jpg",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Dd",
+      "client": "",
+      "year": "0000",
+      "description": "Lorem ipsum",
+      "sort_order": 10,
+      "images": [
+        {
+          "id": 58,
+          "filename": "1779444725562-l5b6c9rsxw.jpg",
+          "sort_order": 0
+        },
+        {
+          "id": 59,
+          "filename": "1779444725569-afn31uej83.jpg",
+          "sort_order": 1
+        }
+      ]
+    }
+  ]
+}
