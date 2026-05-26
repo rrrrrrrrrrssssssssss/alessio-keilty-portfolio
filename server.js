@@ -64,6 +64,7 @@ async function writeDB(data) {
   const blob = await put('db/data.json', JSON.stringify(data, null, 2), {
     access: 'public',
     addRandomSuffix: false,
+    allowOverwrite: true,
     contentType: 'application/json'
   });
   cachedDbUrl = blob.url;
@@ -210,6 +211,7 @@ app.post('/api/projects/:id/images', upload.array('images', 200), wrap(async (re
       const blob = await put(name, f.buffer, {
         access: 'public',
         addRandomSuffix: false,
+        allowOverwrite: true,
         contentType: f.mimetype
       });
       return { id: nextImgId++, filename: blob.url, sort_order: nextOrder++ };
