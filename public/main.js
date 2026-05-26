@@ -19,6 +19,12 @@ const aboutLink    = document.getElementById('about-link');
 const metaBack     = document.getElementById('meta-back');
 const aboutContent = document.getElementById('about-content');
 
+/* ─── Image URL helper ───────────────────────────────────────────── */
+// Vercel Blob images are stored as full URLs; legacy images use /uploads/.
+function imgSrc(filename) {
+  return filename.startsWith('http') ? filename : `/uploads/${filename}`;
+}
+
 /* ─── Init ───────────────────────────────────────────────────────── */
 async function init() {
   const [projects, about] = await Promise.all([
@@ -64,7 +70,7 @@ function buildTrack() {
     const div = document.createElement('div');
     div.className = 'slide';
     const img = document.createElement('img');
-    img.src = `/uploads/${item.image.filename}`;
+    img.src = imgSrc(item.image.filename);
     img.alt = item.project.title;
     img.draggable = false;
     div.appendChild(img);
@@ -93,7 +99,7 @@ function buildSidebar() {
     const div = document.createElement('div');
     div.className = 'thumb';
     const img = document.createElement('img');
-    img.src = `/uploads/${item.image.filename}`;
+    img.src = imgSrc(item.image.filename);
     img.alt = '';
     img.draggable = false;
     div.appendChild(img);
@@ -127,7 +133,7 @@ function buildIndex() {
       thumb.className = 'col-thumb';
 
       const img = document.createElement('img');
-      img.src = `/uploads/${image.filename}`;
+      img.src = imgSrc(image.filename);
       img.alt = '';
       img.draggable = false;
 

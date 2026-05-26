@@ -173,8 +173,9 @@ function renderImages(images) {
     const card = document.createElement('div');
     card.className = 'img-card';
     card.dataset.id = img.id;
+    const src = img.filename.startsWith('http') ? img.filename : `/uploads/${img.filename}`;
     card.innerHTML = `
-      <img src="/uploads/${img.filename}" alt="">
+      <img src="${src}" alt="">
       <span class="img-card-num">${String(i + 1).padStart(2, '0')}</span>
       <button class="img-delete" title="Elimina">×</button>
     `;
