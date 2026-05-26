@@ -9,6 +9,9 @@ const PORT = process.env.PORT || 3000;
 const BASE = __dirname;
 const UPLOADS = path.join(BASE, 'uploads');
 
+// ─── Async error wrapper (Express 4 doesn't catch async errors automatically) ──
+const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
+
 // ─── Storage mode ─────────────────────────────────────────────────────────────
 // BLOB_READ_WRITE_TOKEN is set automatically by Vercel when Blob storage is enabled.
 // Without it (local dev), the app uses the local filesystem as before.
@@ -108,30 +111,35 @@ app.use('/fonts',   express.static(path.join(BASE, 'Font')));
 app.use(express.static(path.join(BASE, 'public')));
 app.use('/admin',   express.static(path.join(BASE, 'admin')));
 
-// ─── About API ────────────────────────────────────────────────────────────────
-app.get('/api/about', async (req, res) => {
-  const db = await readDB();
-  res.json(db.about || { email: '', instagram: '', bio: '' });
+// ─── Health check ─────────────────────────────────────────────────────────────
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true, blob: USE_BLOB });
 });
 
-app.put('/api/about', async (req, res) => {
+// ─── About API ────────────────────────────────────────────────────────────────
+app.get('/api/about', wrap(async (req, res) => {
+  const db = await readDB();
+  res.json(db.about || { email: '', instagram: '', bio: '' });
+}));
+
+app.put('/api/about', wrap(async (req, res) => {
   const db = await readDB();
   const { email = '', instagram = '', instagramUrl = '', bio = '' } = req.body;
   db.about = { email, instagram, instagramUrl, bio };
   await writeDB(db);
   res.json(db.about);
-});
+}));
 
 // ─── Projects API ─────────────────────────────────────────────────────────────
-app.get('/api/projects', async (req, res) => {
+app.get('/api/projects', wrap(async (req, res) => {
   const { projects } = await readDB();
   const sorted = [...projects]
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
     .map(p => ({ ...p, images: [...p.images].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)) }));
   res.json(sorted);
-});
+}));
 
-app.post('/api/projects', async (req, res) => {
+app.post('/api/projects', wrap(async (req, res) => {
   const db = await readDB();
   const { title = '', client = '', year = '', description = '' } = req.body;
   const maxOrder = db.projects.reduce((m, p) => Math.max(m, p.sort_order ?? 0), -1);
@@ -144,10 +152,10 @@ app.post('/api/projects', async (req, res) => {
   db.projects.push(project);
   await writeDB(db);
   res.json(project);
-});
+}));
 
 // PUT reorder must come before PUT :id
-app.put('/api/projects/reorder', async (req, res) => {
+app.put('/api/projects/reorder', wrap(async (req, res) => {
   const db = await readDB();
   const { order } = req.body;
   order.forEach(o => {
@@ -156,9 +164,9 @@ app.put('/api/projects/reorder', async (req, res) => {
   });
   await writeDB(db);
   res.json({ ok: true });
-});
+}));
 
-app.put('/api/projects/:id', async (req, res) => {
+app.put('/api/projects/:id', wrap(async (req, res) => {
   const db = await readDB();
   const p  = db.projects.find(x => x.id === parseInt(req.params.id));
   if (!p) return res.status(404).json({ error: 'Not found' });
@@ -170,9 +178,9 @@ app.put('/api/projects/:id', async (req, res) => {
   if (sort_order  !== undefined) p.sort_order  = sort_order;
   await writeDB(db);
   res.json(p);
-});
+}));
 
-app.delete('/api/projects/:id', async (req, res) => {
+app.delete('/api/projects/:id', wrap(async (req, res) => {
   const db = await readDB();
   const p  = db.projects.find(x => x.id === parseInt(req.params.id));
   if (p) {
@@ -181,10 +189,10 @@ app.delete('/api/projects/:id', async (req, res) => {
     await writeDB(db);
   }
   res.json({ ok: true });
-});
+}));
 
 // ─── Images API ───────────────────────────────────────────────────────────────
-app.post('/api/projects/:id/images', upload.array('images', 200), async (req, res) => {
+app.post('/api/projects/:id/images', upload.array('images', 200), wrap(async (req, res) => {
   const db  = await readDB();
   const pid = parseInt(req.params.id);
   const p   = db.projects.find(x => x.id === pid);
@@ -196,7 +204,6 @@ app.post('/api/projects/:id/images', upload.array('images', 200), async (req, re
 
   let inserted;
   if (USE_BLOB) {
-    // Upload each file buffer to Vercel Blob; store the returned URL as filename
     inserted = await Promise.all(req.files.map(async (f) => {
       const ext  = path.extname(f.originalname).toLowerCase();
       const name = `images/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
@@ -218,9 +225,9 @@ app.post('/api/projects/:id/images', upload.array('images', 200), async (req, re
   p.images.push(...inserted);
   await writeDB(db);
   res.json(inserted);
-});
+}));
 
-app.put('/api/images/reorder', async (req, res) => {
+app.put('/api/images/reorder', wrap(async (req, res) => {
   const db = await readDB();
   const { order } = req.body;
   db.projects.forEach(p =>
@@ -231,9 +238,9 @@ app.put('/api/images/reorder', async (req, res) => {
   );
   await writeDB(db);
   res.json({ ok: true });
-});
+}));
 
-app.delete('/api/images/:id', async (req, res) => {
+app.delete('/api/images/:id', wrap(async (req, res) => {
   const db  = await readDB();
   const id  = parseInt(req.params.id);
   for (const p of db.projects) {
@@ -246,6 +253,13 @@ app.delete('/api/images/:id', async (req, res) => {
   }
   await writeDB(db);
   res.json({ ok: true });
+}));
+
+// ─── Error handler ─────────────────────────────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
