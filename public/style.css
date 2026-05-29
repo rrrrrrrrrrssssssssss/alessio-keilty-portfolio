@@ -64,9 +64,13 @@ html, body {
 }
 
 @media (hover: hover) {
-  #gallery-index-btn:hover,
-  #expand-btn:hover {
+  #top-bar:hover #gallery-index-btn,
+  #top-bar:hover #expand-btn {
     opacity: 0.3;
+  }
+  #top-bar #gallery-index-btn:hover,
+  #top-bar #expand-btn:hover {
+    opacity: 1;
   }
 }
 
