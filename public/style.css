@@ -178,6 +178,18 @@ html, body {
   pointer-events: auto;
   transition: opacity 0.2s;
   user-select: none;
+  display: inline-block;
+}
+
+/* Ghost that always reserves the width of "About" (the wider label).
+   "Back" is shorter, so without this the meta-group would shift on toggle. */
+#about-link::after {
+  content: 'About';
+  display: block;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 @media (hover: hover) {
