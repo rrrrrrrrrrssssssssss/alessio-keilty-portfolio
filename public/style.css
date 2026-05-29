@@ -63,9 +63,11 @@ html, body {
   pointer-events: none;
 }
 
-#top-bar:has(:hover) #gallery-index-btn,
-#top-bar:has(:hover) #expand-btn {
-  opacity: 0.3;
+@media (hover: hover) {
+  #gallery-index-btn:hover,
+  #expand-btn:hover {
+    opacity: 0.3;
+  }
 }
 
 /* ─── Carousel viewport ───────────────────────────────── */
