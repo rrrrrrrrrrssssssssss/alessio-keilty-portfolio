@@ -16,6 +16,7 @@ const metaTitle   = document.getElementById('meta-title');
 const metaDesc    = document.getElementById('meta-desc');
 const gridOverlay = document.getElementById('grid-overlay');
 const indexCols   = document.getElementById('index-cols');
+const expandBtn    = document.getElementById('expand-btn');
 const aboutLink    = document.getElementById('about-link');
 const metaBack     = document.getElementById('meta-back');
 const aboutContent = document.getElementById('about-content');
@@ -271,14 +272,14 @@ function bindEvents() {
     if (e.key === 'Escape') { closeGrid(); closeAbout(); }
   });
 
-  // Entrambi i bottoni aprono la griglia
-  document.getElementById('expand-btn').addEventListener('click', e => {
+  // I pulsanti aprono/chiudono la griglia (toggle)
+  expandBtn.addEventListener('click', e => {
     e.stopPropagation();
-    openGrid();
+    document.body.classList.contains('index-open') ? closeGrid(true) : openGrid();
   });
   document.getElementById('gallery-index-btn').addEventListener('click', e => {
     e.stopPropagation();
-    openGrid();
+    document.body.classList.contains('index-open') ? closeGrid(true) : openGrid();
   });
   aboutLink.addEventListener('click', e => {
     e.stopPropagation();
@@ -350,6 +351,7 @@ function openGrid() {
   gridOverlay.offsetHeight; // force reflow so transition fires from translateX(100%)
   gridOverlay.classList.add('open');
   document.body.classList.add('index-open');
+  expandBtn.textContent = 'Back';
 }
 
 function closeGrid(keepAbout = false) {
@@ -366,6 +368,7 @@ function closeGrid(keepAbout = false) {
   }
   gridOverlay.classList.remove('open');
   document.body.classList.remove('index-open');
+  expandBtn.textContent = 'Expand';
   gridOverlay.addEventListener('transitionend', () => {
     gridOverlay.setAttribute('hidden', '');
   }, { once: true });

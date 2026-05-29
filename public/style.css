@@ -50,6 +50,19 @@ html, body {
   user-select: none;
 }
 
+/* Ghost reserves the width of 'Expand' (wider label) so 'Back' doesn't shift siblings */
+#expand-btn {
+  display: inline-block;
+}
+#expand-btn::after {
+  content: 'Expand';
+  display: block;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 #top-bar:has(:hover) #gallery-index-btn,
 #top-bar:has(:hover) #expand-btn {
   opacity: 0.3;
@@ -262,6 +275,21 @@ body.index-open #top-bar,
 body.index-open #bottom-bar {
   opacity: 0;
   pointer-events: none;
+}
+
+/* ─── Desktop: top-bar stays above the index overlay ───── */
+/* On desktop the top-bar elements don't disappear — they stay
+   visible at z-index 51 (above the overlay at 50). The index-header
+   inside the overlay is hidden because it duplicates the same text. */
+@media (min-width: 769px) {
+  body.index-open #top-bar {
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 51;
+  }
+  #index-header {
+    display: none;
+  }
 }
 
 
