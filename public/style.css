@@ -389,13 +389,13 @@ body.index-open #bottom-bar {
   padding-bottom: var(--pad);
 }
 
-/* ─── About transitions ───────────────────────────────── */
-body.about-open #viewport {
-  transform: translateX(100vw);
-  pointer-events: none;
-}
+/* ─── About animations ────────────────────────────────── */
+@keyframes aboutSlideOut  { from { transform: translateX(0); }           to { transform: translateX(100vw); } }
+@keyframes aboutFadeIn    { from { opacity: 0; }                         to { opacity: 1; }                  }
+@keyframes aboutSlideBack { from { transform: translateX(100vw); }        to { transform: translateX(0); }    }
+@keyframes aboutFadeOut   { from { opacity: 1; }                         to { opacity: 0; }                  }
 
-/* ─── About content ───────────────────────────────────── */
+/* ─── About content (default: hidden) ────────────────── */
 #about-content {
   opacity: 0;
   pointer-events: none;
@@ -403,23 +403,25 @@ body.about-open #viewport {
   line-height: 1.15;
 }
 
-body.about-open #about-content {
+/* Opening: viewport slides out first (0.35s), then content fades in (delay 0.35s) */
+body.about-open:not(.about-closing) #viewport {
+  transform: translateX(100vw);
+  animation: aboutSlideOut 0.35s ease both;
+  pointer-events: none;
+}
+body.about-open:not(.about-closing) #about-content {
   opacity: 1;
   pointer-events: auto;
-  transition: opacity 0.4s ease 0.35s;
+  animation: aboutFadeIn 0.4s ease 0.35s both;
 }
 
-@keyframes aboutFadeOut {
-  from { opacity: 1; }
-  to   { opacity: 0; }
-}
-
+/* Closing: content fades out first (0.4s), then viewport slides back (delay 0.4s) */
 body.about-open.about-closing #about-content {
   animation: aboutFadeOut 0.4s ease forwards;
   pointer-events: none;
 }
-
-body.about-closing #viewport {
+body.about-open.about-closing #viewport {
+  animation: aboutSlideBack 0.35s ease 0.4s both;
   pointer-events: none;
 }
 

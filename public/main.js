@@ -465,18 +465,13 @@ function closeAbout() {
   crossFadeLabel('About');
   hideMetaBack();
 
-  // Step 1: CSS animation fades out the content (about-open still present, viewport stays put).
-  // Step 2: 400ms later, remove about-open → base CSS transition slides viewport back.
-  // Step 3: 400ms later, remove about-closing → cleanup.
-  // Each class change happens in isolation so iOS Safari never coalesces two changes at once.
+  // CSS animations handle everything: content fades (0.4s), viewport slides back (delay 0.4s, 0.35s).
+  // A single class addition triggers both; classes are removed after all animations complete.
   document.body.classList.add('about-closing');
 
   closeAboutTimers.push(setTimeout(() => {
-    document.body.classList.remove('about-open');
-    closeAboutTimers.push(setTimeout(() => {
-      document.body.classList.remove('about-closing');
-    }, 400));
-  }, 400));
+    document.body.classList.remove('about-open', 'about-closing');
+  }, 800));
 }
 
 init();
