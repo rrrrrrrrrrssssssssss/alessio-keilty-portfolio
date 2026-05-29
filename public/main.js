@@ -2,6 +2,7 @@
 let items = [];   // [{ image, project, projectImages }]
 let N = 0;
 let cur = 0;
+let closeAboutTimers = [];
 
 /* ─── DOM refs ───────────────────────────────────────────────────── */
 const track       = document.getElementById('track');
@@ -355,8 +356,9 @@ function closeGrid(keepAbout = false) {
   if (!keepAbout && document.body.classList.contains('about-open')) {
     // Grid (z-index 50) covers everything — reset About state silently with no animations.
     // Calling closeAbout() here would trigger its viewport transitions and fight the grid slide-out.
-    document.body.classList.remove('about-open');
-    aboutContent.getAnimations().forEach(a => a.cancel());
+    closeAboutTimers.forEach(clearTimeout);
+    closeAboutTimers = [];
+    document.body.classList.remove('about-open', 'about-closing');
     aboutLink.textContent = 'About';
     aboutLink.style.transition = '';
     aboutLink.style.opacity = '';
@@ -446,46 +448,35 @@ function hideMetaBack() {
 }
 
 function openAbout() {
+  closeAboutTimers.forEach(clearTimeout);
+  closeAboutTimers = [];
+  document.body.classList.remove('about-closing');
   crossFadeLabel('Back');
   showMetaBack();
-  // Cancel any WAAPI fade-out so CSS fade-in (body.about-open rule) can take over cleanly
-  aboutContent.getAnimations().forEach(a => a.cancel());
   document.body.classList.add('about-open');
 }
 
 function closeAbout() {
   if (!document.body.classList.contains('about-open')) return;
 
+  closeAboutTimers.forEach(clearTimeout);
+  closeAboutTimers = [];
+
   crossFadeLabel('About');
   hideMetaBack();
 
-  // Cancel any in-progress CSS transition on about-content so WAAPI starts from opacity:1
-  aboutContent.getAnimations().forEach(a => a.cancel());
+  // Step 1: CSS animation fades out the content (about-open still present, viewport stays put).
+  // Step 2: 400ms later, remove about-open → base CSS transition slides viewport back.
+  // Step 3: 400ms later, remove about-closing → cleanup.
+  // Each class change happens in isolation so iOS Safari never coalesces two changes at once.
+  document.body.classList.add('about-closing');
 
-  // WAAPI fade-out: reliable on iOS, immune to CSS class changes and frame coalescing.
-  // Single end-keyframe → WAAPI reads current computed opacity (1) as the start.
-  const fadeOut = aboutContent.animate(
-    [{ opacity: 0 }],
-    { duration: 400, easing: 'ease', fill: 'forwards' }
-  );
-
-  // After content has faded, slide the viewport back by removing about-open.
-  // The base CSS rule `#viewport { transition: transform 0.35s ease }` is always active,
-  // so removing about-open reliably triggers the transition without any class juggling.
-  let slideDone = false;
-  const slideBack = () => {
-    if (slideDone) return;
-    slideDone = true;
-    viewport.style.pointerEvents = 'none';
+  closeAboutTimers.push(setTimeout(() => {
     document.body.classList.remove('about-open');
-    setTimeout(() => {
-      viewport.style.pointerEvents = '';
-      aboutContent.getAnimations().forEach(a => a.cancel()); // release fill:forwards; CSS opacity:0 takes over
-    }, 400);
-  };
-
-  fadeOut.onfinish = slideBack;
-  setTimeout(slideBack, 500); // fallback if onfinish doesn't fire
+    closeAboutTimers.push(setTimeout(() => {
+      document.body.classList.remove('about-closing');
+    }, 400));
+  }, 400));
 }
 
 init();

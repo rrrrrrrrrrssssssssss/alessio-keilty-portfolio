@@ -409,6 +409,20 @@ body.about-open #about-content {
   transition: opacity 0.4s ease 0.35s;
 }
 
+@keyframes aboutFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+body.about-open.about-closing #about-content {
+  animation: aboutFadeOut 0.4s ease forwards;
+  pointer-events: none;
+}
+
+body.about-closing #viewport {
+  pointer-events: none;
+}
+
 
 .contact-link {
   color: #000;
