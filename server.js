@@ -21,8 +21,10 @@ const { put, list, del } = USE_BLOB ? require('@vercel/blob') : {};
 // ─── Database ─────────────────────────────────────────────────────────────────
 const DB_PATH = path.join(BASE, 'data.json');
 
-// Cache the blob URL within a single serverless invocation to avoid repeated list() calls
-let cachedDbUrl = null;
+// In-memory cache: always authoritative after first load.
+// Local dev: single persistent process → memory is always current, no CDN stale reads.
+// Vercel serverless: each invocation starts with null → loads fresh from blob once.
+let dbCache = null;
 
 function readLocalDB() {
   if (!fs.existsSync(DB_PATH)) return { projects: [] };
@@ -31,16 +33,13 @@ function readLocalDB() {
 }
 
 async function readDB() {
-  if (!USE_BLOB) return readLocalDB();
+  if (dbCache) return dbCache;
 
-  // Try the cached URL first
-  if (cachedDbUrl) {
-    const res = await fetch(cachedDbUrl + '?t=' + Date.now());
-    if (res.ok) return await res.json();
-    cachedDbUrl = null;
+  if (!USE_BLOB) {
+    dbCache = readLocalDB();
+    return dbCache;
   }
 
-  // Find the blob by prefix
   const { blobs } = await list({ prefix: 'db/data.json' });
 
   if (blobs.length === 0) {
@@ -51,24 +50,25 @@ async function readDB() {
   }
 
   // Blob exists — fetch it; throw on failure so we never overwrite with stale local data
-  cachedDbUrl = blobs[0].url;
-  const res = await fetch(cachedDbUrl + '?t=' + Date.now());
+  const res = await fetch(blobs[0].url + '?t=' + Date.now());
   if (!res.ok) throw new Error(`readDB: blob fetch failed (${res.status})`);
-  return res.json();
+  dbCache = await res.json();
+  return dbCache;
 }
 
 async function writeDB(data) {
+  dbCache = data; // update memory first so subsequent reads are immediately consistent
+
   if (!USE_BLOB) {
     fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf8');
     return;
   }
-  const blob = await put('db/data.json', JSON.stringify(data, null, 2), {
+  await put('db/data.json', JSON.stringify(data, null, 2), {
     access: 'public',
     addRandomSuffix: false,
     allowOverwrite: true,
     contentType: 'application/json'
   });
-  cachedDbUrl = blob.url;
 }
 
 function maxId(arr) {
