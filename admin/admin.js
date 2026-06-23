@@ -3,9 +3,16 @@ let projects = [];
 let activeId = null;
 let imageSortable = null;
 let aboutData = { email: '', instagram: '', bio: '' };
+let selectedProjectIds = new Set();
+let selectedImageIds = new Set();
 
 /* ─── DOM refs ───────────────────────────────────────────── */
 const projectList     = document.getElementById('project-list');
+const projectBulkBar     = document.getElementById('project-bulk-bar');
+const projectBulkCount   = document.getElementById('project-bulk-count');
+const projectBulkDelete  = document.getElementById('project-bulk-delete');
+const projectBulkCancel  = document.getElementById('project-bulk-cancel');
+const imageBulkDelete    = document.getElementById('image-bulk-delete');
 const editorEmpty     = document.getElementById('editor-empty');
 const editorForm      = document.getElementById('editor-form');
 const formTitle       = document.getElementById('form-title');
@@ -56,10 +63,18 @@ function renderProjectList() {
     li.className = 'project-item' + (p.id === activeId ? ' active' : '');
     li.dataset.id = p.id;
     li.innerHTML = `
+      <input type="checkbox" class="project-item-check" ${selectedProjectIds.has(p.id) ? 'checked' : ''}>
       <span class="project-item-drag" title="Trascina per riordinare">⠿</span>
       <span class="project-item-name">${p.title || '(senza titolo)'}</span>
       <span class="project-item-meta">${p.images.length} img</span>
     `;
+    const checkbox = li.querySelector('.project-item-check');
+    checkbox.addEventListener('click', e => e.stopPropagation());
+    checkbox.addEventListener('change', e => {
+      if (e.target.checked) selectedProjectIds.add(p.id);
+      else selectedProjectIds.delete(p.id);
+      updateProjectBulkBar();
+    });
     li.addEventListener('click', () => selectProject(p.id));
     projectList.appendChild(li);
   });
@@ -82,10 +97,17 @@ function renderProjectList() {
   });
 }
 
+function updateProjectBulkBar() {
+  const n = selectedProjectIds.size;
+  projectBulkBar.hidden = n === 0;
+  projectBulkCount.textContent = `${n} selezionat${n === 1 ? 'o' : 'i'}`;
+}
+
 function selectProject(id) {
   activeId = id;
   const p = projects.find(x => x.id === id);
   if (!p) return;
+  selectedImageIds.clear();
 
   // Update list highlight
   document.querySelectorAll('.project-item').forEach(el =>
@@ -170,24 +192,49 @@ function renderImages(images) {
   imagesCount.textContent = `${images.length} immagin${images.length === 1 ? 'e' : 'i'}`;
 
   images.forEach((img, i) => {
-    const card = document.createElement('div');
-    card.className = 'img-card';
-    card.dataset.id = img.id;
+    const wrap = document.createElement('div');
+    wrap.className = 'img-card-wrap';
+    wrap.dataset.id = img.id;
     const src = img.filename.startsWith('http') ? img.filename : `/uploads/${img.filename}`;
-    card.innerHTML = `
-      <img src="${src}" alt="">
-      <span class="img-card-num">${String(i + 1).padStart(2, '0')}</span>
-      <button class="img-delete" title="Elimina">×</button>
+    wrap.innerHTML = `
+      <div class="img-card">
+        <label class="img-check-wrap">
+          <input type="checkbox" class="img-check" ${selectedImageIds.has(img.id) ? 'checked' : ''}>
+        </label>
+        <img src="${src}" alt="">
+        <span class="img-card-num">${String(i + 1).padStart(2, '0')}</span>
+        <button class="img-delete" title="Elimina">×</button>
+      </div>
+      <div class="img-card-fields">
+        <input type="text" class="img-field-year" data-field="year" placeholder="Anno" title="Sovrascrive l'anno del progetto solo per questa immagine">
+        <input type="text" class="img-field-desc" data-field="description" placeholder="Descrizione" title="Sovrascrive la descrizione del progetto solo per questa immagine">
+      </div>
     `;
-    card.querySelector('.img-delete').addEventListener('click', e => {
+    wrap.querySelector('.img-field-year').value = img.year        || '';
+    wrap.querySelector('.img-field-desc').value = img.description || '';
+    wrap.querySelectorAll('.img-field-year, .img-field-desc').forEach(input => {
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+      input.addEventListener('blur', () => saveImageField(img.id, input.dataset.field, input.value.trim()));
+    });
+
+    const checkWrap = wrap.querySelector('.img-check-wrap');
+    checkWrap.addEventListener('click', e => e.stopPropagation());
+    checkWrap.querySelector('.img-check').addEventListener('change', e => {
+      if (e.target.checked) selectedImageIds.add(img.id);
+      else selectedImageIds.delete(img.id);
+      updateImageBulkBar();
+    });
+    wrap.querySelector('.img-delete').addEventListener('click', e => {
       e.stopPropagation();
       confirmDelete(
         'Eliminare questa immagine?',
         () => deleteImage(img.id)
       );
     });
-    imageGrid.appendChild(card);
+    imageGrid.appendChild(wrap);
   });
+
+  updateImageBulkBar();
 
   // Drag-and-drop reorder
   if (imageSortable) imageSortable.destroy();
@@ -195,8 +242,10 @@ function renderImages(images) {
     animation: 150,
     ghostClass: 'sortable-ghost',
     chosenClass: 'sortable-chosen',
+    filter: '.img-field-year, .img-field-desc',
+    preventOnFilter: false,
     onEnd: async () => {
-      const cards = Array.from(imageGrid.querySelectorAll('.img-card'));
+      const cards = Array.from(imageGrid.querySelectorAll('.img-card-wrap'));
       const order = cards.map((el, i) => ({ id: parseInt(el.dataset.id), sort_order: i }));
       // Update numbers visually
       cards.forEach((card, i) => {
@@ -214,6 +263,12 @@ function renderImages(images) {
       }
     }
   });
+}
+
+function updateImageBulkBar() {
+  const n = selectedImageIds.size;
+  imageBulkDelete.hidden = n === 0;
+  imageBulkDelete.textContent = n > 0 ? `Elimina selezionate (${n})` : 'Elimina selezionate';
 }
 
 async function uploadFiles(files) {
@@ -254,14 +309,64 @@ async function uploadFiles(files) {
   }
 }
 
+async function saveImageField(imgId, field, value) {
+  const res = await fetch(`/api/images/${imgId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ [field]: value })
+  });
+  const updated = await res.json();
+  const p = projects.find(x => x.id === activeId);
+  const img = p && p.images.find(i => i.id === imgId);
+  if (img) img[field] = updated[field];
+}
+
 async function deleteImage(imgId) {
   await fetch(`/api/images/${imgId}`, { method: 'DELETE' });
+  selectedImageIds.delete(imgId);
   const p = projects.find(x => x.id === activeId);
   if (p) {
     p.images = p.images.filter(i => i.id !== imgId);
     renderImages(p.images);
     renderProjectList();
   }
+}
+
+async function deleteSelectedImages() {
+  const ids = Array.from(selectedImageIds);
+  if (!ids.length) return;
+  await fetch('/api/images', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids })
+  });
+  selectedImageIds.clear();
+  const p = projects.find(x => x.id === activeId);
+  if (p) {
+    p.images = p.images.filter(i => !ids.includes(i.id));
+    renderImages(p.images);
+    renderProjectList();
+  }
+}
+
+async function deleteSelectedProjects() {
+  const ids = Array.from(selectedProjectIds);
+  if (!ids.length) return;
+  await fetch('/api/projects', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids })
+  });
+  projects = projects.filter(p => !ids.includes(p.id));
+  selectedProjectIds.clear();
+  if (ids.includes(activeId)) {
+    activeId = null;
+    editorForm.hidden  = true;
+    editorEmpty.hidden = false;
+    document.body.classList.remove('mobile-editor');
+  }
+  updateProjectBulkBar();
+  renderProjectList();
 }
 
 /* ─── Confirm dialog ─────────────────────────────────────── */
@@ -326,12 +431,36 @@ function bindEvents() {
       async () => {
         await fetch(`/api/projects/${activeId}`, { method: 'DELETE' });
         projects = projects.filter(p => p.id !== activeId);
+        selectedProjectIds.delete(activeId);
         activeId = null;
         renderProjectList();
         editorForm.hidden  = true;
         editorEmpty.hidden = false;
         document.body.classList.remove('mobile-editor');
       }
+    );
+  });
+
+  // Bulk delete: projects
+  projectBulkDelete.addEventListener('click', () => {
+    const n = selectedProjectIds.size;
+    confirmDelete(
+      `Eliminare ${n} progett${n === 1 ? 'o' : 'i'} e tutte le loro immagini?`,
+      deleteSelectedProjects
+    );
+  });
+  projectBulkCancel.addEventListener('click', () => {
+    selectedProjectIds.clear();
+    updateProjectBulkBar();
+    renderProjectList();
+  });
+
+  // Bulk delete: images
+  imageBulkDelete.addEventListener('click', () => {
+    const n = selectedImageIds.size;
+    confirmDelete(
+      `Eliminare ${n} immagin${n === 1 ? 'e' : 'i'}?`,
+      deleteSelectedImages
     );
   });
 

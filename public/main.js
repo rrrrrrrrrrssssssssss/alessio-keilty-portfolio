@@ -17,6 +17,8 @@ const metaDesc    = document.getElementById('meta-desc');
 const gridOverlay = document.getElementById('grid-overlay');
 const indexCols   = document.getElementById('index-cols');
 const aboutLink    = document.getElementById('about-link');
+const expandBtn    = document.getElementById('expand-btn');
+const galleryIndexBtn = document.getElementById('gallery-index-btn');
 const metaBack     = document.getElementById('meta-back');
 const aboutContent = document.getElementById('about-content');
 
@@ -74,6 +76,8 @@ function buildTrack() {
     img.src = imgSrc(item.image.filename);
     img.alt = item.project.title;
     img.draggable = false;
+    img.loading = 'lazy';
+    img.decoding = 'async';
     div.appendChild(img);
     return div;
   }
@@ -103,6 +107,8 @@ function buildSidebar() {
     img.src = imgSrc(item.image.filename);
     img.alt = '';
     img.draggable = false;
+    img.loading = 'lazy';
+    img.decoding = 'async';
     div.appendChild(img);
     div.addEventListener('click', () => { closeAbout(); goTo(i); });
     sidebarInner.appendChild(div);
@@ -137,6 +143,8 @@ function buildIndex() {
       img.src = imgSrc(image.filename);
       img.alt = '';
       img.draggable = false;
+      img.loading = 'lazy';
+      img.decoding = 'async';
 
       const num = document.createElement('span');
       num.className = 'col-num';
@@ -148,13 +156,30 @@ function buildIndex() {
       colImages.appendChild(thumb);
     });
 
+    const titleYear = [project.title, project.year].filter(Boolean).join(', ');
+
+    if (titleYear) {
+      const titleInline = document.createElement('div');
+      titleInline.className = 'col-title-inline';
+      if (project.title && project.year) {
+        const titleLine = document.createElement('div');
+        titleLine.textContent = project.title + ',';
+        const yearLine = document.createElement('div');
+        yearLine.textContent = project.year;
+        titleInline.appendChild(titleLine);
+        titleInline.appendChild(yearLine);
+      } else {
+        titleInline.textContent = titleYear;
+      }
+      colImages.appendChild(titleInline);
+    }
+
     const colMeta = document.createElement('div');
     colMeta.className = 'col-meta';
 
-    const titleYear = [project.title, project.year].filter(Boolean).join(', ');
-    if (titleYear)           { const el = document.createElement('div'); el.textContent = titleYear;           colMeta.appendChild(el); }
-    if (project.client)      { const el = document.createElement('div'); el.textContent = project.client;      colMeta.appendChild(el); }
-    if (project.description) { const el = document.createElement('div'); el.textContent = project.description; colMeta.appendChild(el); }
+    if (titleYear)           { const el = document.createElement('div'); el.className = 'col-title'; el.textContent = titleYear; colMeta.appendChild(el); }
+    if (project.client)      { const el = document.createElement('div'); el.className = 'col-client'; el.textContent = project.client; colMeta.appendChild(el); }
+    if (project.description) { const el = document.createElement('div'); el.className = 'col-desc'; el.textContent = project.description; colMeta.appendChild(el); }
 
     col.appendChild(colImages);
     col.appendChild(colMeta);
@@ -183,12 +208,15 @@ function updateUI() {
   curEl.textContent = String(posInProject).padStart(2, '0');
   totEl.textContent = '/' + String(total).padStart(2, '0');
 
-  // Anno dopo il titolo, separato da virgola
-  const titleYear = [item.project.title, item.project.year].filter(Boolean).join(', ');
+  // Anno dopo il titolo, separato da virgola.
+  // L'immagine corrente può sovrascrivere anno/descrizione del progetto.
+  const year  = item.image.year        || item.project.year;
+  const desc  = item.image.description || item.project.description;
+  const titleYear = [item.project.title, year].filter(Boolean).join(', ');
   metaClient.textContent = item.project.client  || '';
   metaClient.hidden      = !item.project.client;
   metaTitle.textContent  = titleYear;
-  metaDesc.textContent   = item.project.description || '';
+  metaDesc.textContent   = desc || '';
 
   // Sidebar: porta la miniatura attiva in vista
   const thumbs = sidebarInner.querySelectorAll('.thumb');
@@ -271,14 +299,15 @@ function bindEvents() {
     if (e.key === 'Escape') { closeGrid(); closeAbout(); }
   });
 
-  // Entrambi i bottoni aprono la griglia
-  document.getElementById('expand-btn').addEventListener('click', e => {
+  // Expand apre/chiude la griglia (toggle), l'indice la apre soltanto
+  expandBtn.addEventListener('click', e => {
     e.stopPropagation();
-    openGrid();
+    document.body.classList.contains('index-open') ? closeGrid() : openGrid();
   });
-  document.getElementById('gallery-index-btn').addEventListener('click', e => {
+  galleryIndexBtn.addEventListener('click', e => {
     e.stopPropagation();
-    openGrid();
+    document.body.classList.contains('index-open') ? closeGrid() : openGrid();
+    galleryIndexBtn.style.opacity = '1';
   });
   aboutLink.addEventListener('click', e => {
     e.stopPropagation();
@@ -350,6 +379,7 @@ function openGrid() {
   gridOverlay.offsetHeight; // force reflow so transition fires from translateX(100%)
   gridOverlay.classList.add('open');
   document.body.classList.add('index-open');
+  crossFadeLabel(expandBtn, 'Back');
 }
 
 function closeGrid(keepAbout = false) {
@@ -366,26 +396,30 @@ function closeGrid(keepAbout = false) {
   }
   gridOverlay.classList.remove('open');
   document.body.classList.remove('index-open');
+  crossFadeLabel(expandBtn, 'Expand');
   gridOverlay.addEventListener('transitionend', () => {
     gridOverlay.setAttribute('hidden', '');
   }, { once: true });
 }
 
-function crossFadeLabel(newText) {
-  if (aboutLink.textContent === newText) return;
+function crossFadeLabel(el, newText) {
+  if (el.textContent === newText) return;
   // Kill any in-progress transition (avoids iOS race with :active release)
-  aboutLink.style.transition = 'none';
-  aboutLink.getBoundingClientRect();
-  aboutLink.style.transition = 'opacity 0.12s ease';
-  aboutLink.getBoundingClientRect();
-  aboutLink.style.opacity = '0';
+  el.style.transition = 'none';
+  el.getBoundingClientRect();
+  el.style.transition = 'opacity 0.12s ease';
+  el.getBoundingClientRect();
+  el.style.opacity = '0';
   setTimeout(() => {
-    aboutLink.textContent = newText;
-    aboutLink.style.transition = 'opacity 0.2s ease';
-    aboutLink.style.opacity = '1';
+    el.textContent = newText;
+    el.style.transition = 'opacity 0.2s ease';
+    el.style.opacity = '1';
     setTimeout(() => {
-      aboutLink.style.transition = '';
-      aboutLink.style.opacity = '';
+      el.style.transition = '';
+      // Force full opacity (instead of clearing back to the stylesheet value):
+      // iOS can leave :active "stuck" after the tap that triggered this label
+      // change, which would otherwise show the dimmed 0.3 state permanently.
+      el.style.opacity = '1';
     }, 250);
   }, 150);
 }
@@ -451,7 +485,7 @@ function openAbout() {
   closeAboutTimers.forEach(clearTimeout);
   closeAboutTimers = [];
   document.body.classList.remove('about-closing');
-  crossFadeLabel('Back');
+  crossFadeLabel(aboutLink, 'Back');
   showMetaBack();
   document.body.classList.add('about-open');
 }
@@ -462,7 +496,7 @@ function closeAbout() {
   closeAboutTimers.forEach(clearTimeout);
   closeAboutTimers = [];
 
-  crossFadeLabel('About');
+  crossFadeLabel(aboutLink, 'About');
   hideMetaBack();
 
   // CSS animations handle everything: content fades (0.4s), viewport slides back (delay 0.4s, 0.35s).

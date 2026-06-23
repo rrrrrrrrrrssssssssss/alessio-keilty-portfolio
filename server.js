@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const multer  = require('multer');
+const sharp   = require('sharp');
 const path    = require('path');
 const fs      = require('fs');
 
@@ -86,23 +87,34 @@ async function deleteImageFile(filename) {
   }
 }
 
+// ─── Image optimization ────────────────────────────────────────────────────────
+// Camera originals are often huge (10-30MB, 6000px+) — way more than any screen
+// needs. Resize to a long-edge cap that still looks sharp full-screen on retina
+// displays, and re-encode as a compressed JPEG. Runs on every upload, regardless
+// of storage backend, so both local disk and Vercel Blob get the same lighter file.
+const MAX_DIMENSION = 2400;
+const JPEG_QUALITY   = 85;
+
+async function optimizeImage(buffer) {
+  const image = sharp(buffer, { failOn: 'none' }).rotate(); // auto-orient from EXIF, then strip it
+  const meta  = await image.metadata();
+  if ((meta.width || 0) > MAX_DIMENSION || (meta.height || 0) > MAX_DIMENSION) {
+    image.resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: 'inside', withoutEnlargement: true });
+  }
+  return image.jpeg({ quality: JPEG_QUALITY, mozjpeg: true }).toBuffer();
+}
+
 // ─── Multer ───────────────────────────────────────────────────────────────────
 const ALLOWED_EXT = ['.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff', '.gif'];
 
 const upload = multer({
-  storage: USE_BLOB
-    ? multer.memoryStorage()
-    : multer.diskStorage({
-        destination: UPLOADS,
-        filename: (req, file, cb) => {
-          const ext = path.extname(file.originalname).toLowerCase();
-          cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
-        }
-      }),
+  // Always buffer in memory: every upload now passes through sharp before
+  // being persisted (to disk or to Blob), regardless of storage backend.
+  storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
     cb(null, ALLOWED_EXT.includes(path.extname(file.originalname).toLowerCase()));
   },
-  limits: { fileSize: 10 * 1024 * 1024 }
+  limits: { fileSize: 30 * 1024 * 1024 }
 });
 
 // ─── Static ───────────────────────────────────────────────────────────────────
@@ -193,6 +205,17 @@ app.delete('/api/projects/:id', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// Bulk delete: { ids: [1, 2, 3] }
+app.delete('/api/projects', wrap(async (req, res) => {
+  const db  = await readDB();
+  const ids = (req.body.ids || []).map(Number);
+  const toDelete = db.projects.filter(p => ids.includes(p.id));
+  await Promise.all(toDelete.flatMap(p => p.images.map(img => deleteImageFile(img.filename))));
+  db.projects = db.projects.filter(p => !ids.includes(p.id));
+  await writeDB(db);
+  res.json({ ok: true });
+}));
+
 // ─── Images API ───────────────────────────────────────────────────────────────
 app.post('/api/projects/:id/images', upload.array('images', 200), wrap(async (req, res) => {
   const db  = await readDB();
@@ -201,29 +224,29 @@ app.post('/api/projects/:id/images', upload.array('images', 200), wrap(async (re
   if (!p) return res.status(404).json({ error: 'Not found' });
 
   const allImgIds = db.projects.flatMap(x => x.images.map(i => i.id));
-  let nextImgId   = (allImgIds.length === 0 ? 0 : Math.max(...allImgIds)) + 1;
-  let nextOrder   = p.images.reduce((m, i) => Math.max(m, i.sort_order ?? 0), -1) + 1;
+  const nextImgId = (allImgIds.length === 0 ? 0 : Math.max(...allImgIds)) + 1;
+  const nextOrder = p.images.reduce((m, i) => Math.max(m, i.sort_order ?? 0), -1) + 1;
 
-  let inserted;
-  if (USE_BLOB) {
-    inserted = await Promise.all(req.files.map(async (f, i) => {
-      const ext  = path.extname(f.originalname).toLowerCase();
-      const name = `images/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-      const blob = await put(name, f.buffer, {
+  const inserted = await Promise.all(req.files.map(async (f, i) => {
+    const optimized = await optimizeImage(f.buffer);
+    const name = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+
+    let filename;
+    if (USE_BLOB) {
+      const blob = await put(`images/${name}`, optimized, {
         access: 'public',
         addRandomSuffix: false,
         allowOverwrite: true,
-        contentType: f.mimetype
+        contentType: 'image/jpeg'
       });
-      return { id: nextImgId + i, filename: blob.url, sort_order: nextOrder + i };
-    }));
-  } else {
-    inserted = req.files.map(f => ({
-      id: nextImgId++,
-      filename: f.filename,
-      sort_order: nextOrder++
-    }));
-  }
+      filename = blob.url;
+    } else {
+      fs.writeFileSync(path.join(UPLOADS, name), optimized);
+      filename = name;
+    }
+
+    return { id: nextImgId + i, filename, sort_order: nextOrder + i };
+  }));
 
   p.images.push(...inserted);
   await writeDB(db);
@@ -243,6 +266,22 @@ app.put('/api/images/reorder', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+app.put('/api/images/:id', wrap(async (req, res) => {
+  const db  = await readDB();
+  const id  = parseInt(req.params.id);
+  let img = null;
+  for (const p of db.projects) {
+    img = p.images.find(i => i.id === id);
+    if (img) break;
+  }
+  if (!img) return res.status(404).json({ error: 'Not found' });
+  const { description, year } = req.body;
+  if (description !== undefined) img.description = description;
+  if (year        !== undefined) img.year        = year;
+  await writeDB(db);
+  res.json(img);
+}));
+
 app.delete('/api/images/:id', wrap(async (req, res) => {
   const db  = await readDB();
   const id  = parseInt(req.params.id);
@@ -254,6 +293,24 @@ app.delete('/api/images/:id', wrap(async (req, res) => {
       break;
     }
   }
+  await writeDB(db);
+  res.json({ ok: true });
+}));
+
+// Bulk delete: { ids: [1, 2, 3] }
+app.delete('/api/images', wrap(async (req, res) => {
+  const db  = await readDB();
+  const ids = (req.body.ids || []).map(Number);
+  const filenames = [];
+  db.projects.forEach(p => {
+    const keep = [];
+    p.images.forEach(img => {
+      if (ids.includes(img.id)) filenames.push(img.filename);
+      else keep.push(img);
+    });
+    p.images = keep;
+  });
+  await Promise.all(filenames.map(deleteImageFile));
   await writeDB(db);
   res.json({ ok: true });
 }));

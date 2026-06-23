@@ -19,6 +19,11 @@
       <button id="about-btn" class="btn-secondary">About</button>
       <button id="new-project-btn" class="btn-primary">+ Nuovo progetto</button>
     </header>
+    <div id="project-bulk-bar" hidden>
+      <span id="project-bulk-count"></span>
+      <button id="project-bulk-delete" class="btn-danger">Elimina</button>
+      <button id="project-bulk-cancel" class="btn-secondary">Annulla</button>
+    </div>
     <ul id="project-list"></ul>
   </aside>
 
@@ -95,10 +100,13 @@
       <div id="images-section">
         <div id="images-header">
           <span id="images-count">0 immagini</span>
-          <label id="upload-label" class="btn-secondary">
-            + Aggiungi immagini
-            <input type="file" id="file-input" multiple accept="image/*" hidden>
-          </label>
+          <div id="images-header-actions">
+            <button id="image-bulk-delete" class="btn-danger" hidden>Elimina selezionate</button>
+            <label id="upload-label" class="btn-secondary">
+              + Aggiungi immagini
+              <input type="file" id="file-input" multiple accept="image/*" hidden>
+            </label>
+          </div>
         </div>
 
         <!-- Drop zone -->
@@ -107,7 +115,7 @@
           <div id="drop-hint">Trascina le immagini qui per caricarle</div>
         </div>
 
-        <p class="hint">Trascina le immagini per riordinarle · Clicca la × per eliminarle</p>
+        <p class="hint">Trascina le immagini per riordinarle · Clicca la × per eliminarle · Anno/Descrizione per singola immagine sovrascrivono quelli del progetto, se compilati</p>
       </div>
     </div>
   </main>

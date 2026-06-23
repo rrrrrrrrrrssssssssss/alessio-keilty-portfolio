@@ -50,9 +50,11 @@ html, body {
   user-select: none;
 }
 
-#top-bar:has(:hover) #gallery-index-btn,
-#top-bar:has(:hover) #expand-btn {
-  opacity: 0.3;
+@media (hover: hover) {
+  #top-bar:has(:hover) #gallery-index-btn,
+  #top-bar:has(:hover) #expand-btn {
+    opacity: 0.3;
+  }
 }
 
 /* ─── Carousel viewport ───────────────────────────────── */
@@ -393,12 +395,31 @@ body.index-open #bottom-bar {
   pointer-events: none;
 }
 
+@media (min-width: 769px) {
+  .col-gap,
+  .col-total,
+  .col-title-inline {
+    display: none;
+  }
+
+  .project-col {
+    margin-right: 15px;
+  }
+}
+
 .col-meta {
   padding-top: 2px;
+  padding-right: 7px;
   display: flex;
   flex-direction: column;
   line-height: 1.15;
   padding-bottom: var(--pad);
+  align-self: flex-start;
+  width: var(--sw);
+  min-width: 0;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  -webkit-hyphens: auto;
 }
 
 /* ─── About animations ────────────────────────────────── */
@@ -535,7 +556,7 @@ body.about-open.about-closing #viewport {
 
   #sidebar-counter {
     margin-bottom: 5px;
-    gap: var(--gap);
+    gap: 12px;
   }
 
   #cur, #tot { width: auto; }
@@ -605,29 +626,32 @@ body.about-open.about-closing #viewport {
   .col-thumb:active img { opacity: 0.3; }
 
   /* Mobile index overlay */
+  /* Top bar stays fixed and visible above the index overlay; only the
+     Expand/Back label crossfades, nothing slides during the animation.
+     Full-bleed white backdrop (edge to edge, down to the screen bottom)
+     keeps the labels readable over the photo grid. */
+  body.index-open #top-bar {
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 60;
+    background: #fff;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 7px var(--pad) var(--pad);
+  }
+
   #grid-overlay {
     display: flex;
     flex-direction: column;
   }
   #grid-overlay[hidden] { display: none !important; }
 
+  /* Header duplicated inside the overlay is unused on mobile: the fixed
+     top bar already shows the title and the Expand/Back toggle. */
   #index-header {
-    position: relative;
-    top: auto;
-    left: auto;
-    right: auto;
-    flex-shrink: 0;
-    background: #fff;
-    padding: var(--pad) var(--pad) 4px;
-    gap: 0;
-    flex-direction: column;
-    align-items: flex-start;
-    pointer-events: auto;
-    z-index: 2;
+    display: none;
   }
-
-  #index-title-btn,
-  #grid-close { line-height: 1.2; }
 
   #index-cols {
     position: relative;
@@ -639,8 +663,7 @@ body.about-open.about-closing #viewport {
     overflow-x: hidden;
     align-items: stretch;
     padding: var(--pad);
-    padding-top: 0;
-    gap: var(--gap);
+    gap: 3px;
   }
 
   .col-unit {
@@ -681,28 +704,45 @@ body.about-open.about-closing #viewport {
     display: block;
   }
 
-  /* Progressive number below each image — scrolls with the filmstrip */
+  /* Progressive number below each image — scrolls with the filmstrip.
+     Digits read taller than lowercase text at the same font-size (no
+     ascenders/descenders), so size down slightly to visually match
+     "Index of the Photographic Gallery". */
   .col-num {
     display: block;
+    font-size: 10.2px;
     line-height: 1.2;
   }
 
-  /* Total count — fixed below the filmstrip, does not scroll */
-  .col-gap {
-    order: 1;
-    width: auto;
-  }
-
+  /* Total count removed on mobile */
+  .col-gap,
   .col-total {
-    padding-left: 0;
+    display: none;
+  }
+
+  /* Title moved inline, at the end of the filmstrip, top-aligned with the photos */
+  .col-title-inline {
+    align-self: flex-start;
+    flex-shrink: 0;
+    max-width: 50%;
+    white-space: normal;
+    word-break: break-word;
     line-height: 1.2;
   }
 
-  /* Project meta — same line spacing as header text */
+  /* Project meta — same line spacing as header text (title now shown inline instead) */
   .col-meta {
     order: 2;
     padding-top: 0;
     padding-bottom: 0;
     line-height: 1.2;
+    align-self: stretch;
+    width: auto;
+  }
+
+  .col-meta .col-title,
+  .col-meta .col-client,
+  .col-meta .col-desc {
+    display: none;
   }
 }
