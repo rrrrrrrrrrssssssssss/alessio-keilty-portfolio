@@ -22,10 +22,17 @@ const galleryIndexBtn = document.getElementById('gallery-index-btn');
 const metaBack     = document.getElementById('meta-back');
 const aboutContent = document.getElementById('about-content');
 
-/* ─── Image URL helper ───────────────────────────────────────────── */
+/* ─── Image URL helpers ──────────────────────────────────────────── */
 // Vercel Blob images are stored as full URLs; legacy images use /uploads/.
 function imgSrc(filename) {
   return filename.startsWith('http') ? filename : `/uploads/${filename}`;
+}
+
+// Small-and-many contexts (sidebar filmstrip, gallery index) use the
+// lightweight thumbnail; images uploaded before thumbnails existed fall
+// back to the full file.
+function thumbSrc(image) {
+  return imgSrc(image.thumbFilename || image.filename);
 }
 
 /* ─── Init ───────────────────────────────────────────────────────── */
@@ -104,7 +111,7 @@ function buildSidebar() {
     const div = document.createElement('div');
     div.className = 'thumb';
     const img = document.createElement('img');
-    img.src = imgSrc(item.image.filename);
+    img.src = thumbSrc(item.image);
     img.alt = '';
     img.draggable = false;
     img.loading = 'lazy';
@@ -140,7 +147,7 @@ function buildIndex() {
       thumb.className = 'col-thumb';
 
       const img = document.createElement('img');
-      img.src = imgSrc(image.filename);
+      img.src = thumbSrc(image);
       img.alt = '';
       img.draggable = false;
       img.loading = 'lazy';

@@ -87,6 +87,25 @@ async function deleteImageFile(filename) {
   }
 }
 
+async function deleteImageRecord(img) {
+  await Promise.all([deleteImageFile(img.filename), deleteImageFile(img.thumbFilename)]);
+}
+
+async function storeImageBuffer(buffer) {
+  const name = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+  if (USE_BLOB) {
+    const blob = await put(`images/${name}`, buffer, {
+      access: 'public',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      contentType: 'image/jpeg'
+    });
+    return blob.url;
+  }
+  fs.writeFileSync(path.join(UPLOADS, name), buffer);
+  return name;
+}
+
 // ─── Image optimization ────────────────────────────────────────────────────────
 // Camera originals are often huge (10-30MB, 6000px+) — way more than any screen
 // needs. Resize to a long-edge cap that still looks sharp full-screen on retina
@@ -95,6 +114,12 @@ async function deleteImageFile(filename) {
 const MAX_DIMENSION = 2400;
 const JPEG_QUALITY   = 85;
 
+// Thumbnails: used everywhere an image shows up small but many-at-once (the
+// gallery index grid, the sidebar filmstrip) — no point shipping a 2400px
+// file for a 76px-wide thumbnail. Long edge is generous enough for retina.
+const THUMB_DIMENSION = 360;
+const THUMB_QUALITY   = 75;
+
 async function optimizeImage(buffer) {
   const image = sharp(buffer, { failOn: 'none' }).rotate(); // auto-orient from EXIF, then strip it
   const meta  = await image.metadata();
@@ -102,6 +127,14 @@ async function optimizeImage(buffer) {
     image.resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: 'inside', withoutEnlargement: true });
   }
   return image.jpeg({ quality: JPEG_QUALITY, mozjpeg: true }).toBuffer();
+}
+
+async function makeThumb(buffer) {
+  return sharp(buffer, { failOn: 'none' })
+    .rotate()
+    .resize({ width: THUMB_DIMENSION, height: THUMB_DIMENSION, fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: THUMB_QUALITY, mozjpeg: true })
+    .toBuffer();
 }
 
 // ─── Multer ───────────────────────────────────────────────────────────────────
@@ -145,9 +178,13 @@ app.put('/api/about', wrap(async (req, res) => {
 }));
 
 // ─── Projects API ─────────────────────────────────────────────────────────────
+// Public front-end gets published projects only; admin passes ?all=1 to see drafts too.
+// Projects created before the draft feature existed have no `published` field —
+// treat that as published, so nothing already live silently disappears.
 app.get('/api/projects', wrap(async (req, res) => {
   const { projects } = await readDB();
-  const sorted = [...projects]
+  const visible = req.query.all ? projects : projects.filter(p => p.published !== false);
+  const sorted = [...visible]
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
     .map(p => ({ ...p, images: [...p.images].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)) }));
   res.json(sorted);
@@ -160,6 +197,7 @@ app.post('/api/projects', wrap(async (req, res) => {
   const project = {
     id: maxId(db.projects) + 1,
     title, client, year, description,
+    published: false, // new projects start as drafts until explicitly published
     sort_order: maxOrder + 1,
     images: []
   };
@@ -184,12 +222,13 @@ app.put('/api/projects/:id', wrap(async (req, res) => {
   const db = await readDB();
   const p  = db.projects.find(x => x.id === parseInt(req.params.id));
   if (!p) return res.status(404).json({ error: 'Not found' });
-  const { title, client, year, description, sort_order } = req.body;
+  const { title, client, year, description, sort_order, published } = req.body;
   if (title       !== undefined) p.title       = title;
   if (client      !== undefined) p.client      = client;
   if (year        !== undefined) p.year        = year;
   if (description !== undefined) p.description = description;
   if (sort_order  !== undefined) p.sort_order  = sort_order;
+  if (published   !== undefined) p.published   = published;
   await writeDB(db);
   res.json(p);
 }));
@@ -198,7 +237,7 @@ app.delete('/api/projects/:id', wrap(async (req, res) => {
   const db = await readDB();
   const p  = db.projects.find(x => x.id === parseInt(req.params.id));
   if (p) {
-    await Promise.all(p.images.map(img => deleteImageFile(img.filename)));
+    await Promise.all(p.images.map(deleteImageRecord));
     db.projects = db.projects.filter(x => x.id !== p.id);
     await writeDB(db);
   }
@@ -210,7 +249,7 @@ app.delete('/api/projects', wrap(async (req, res) => {
   const db  = await readDB();
   const ids = (req.body.ids || []).map(Number);
   const toDelete = db.projects.filter(p => ids.includes(p.id));
-  await Promise.all(toDelete.flatMap(p => p.images.map(img => deleteImageFile(img.filename))));
+  await Promise.all(toDelete.flatMap(p => p.images.map(deleteImageRecord)));
   db.projects = db.projects.filter(p => !ids.includes(p.id));
   await writeDB(db);
   res.json({ ok: true });
@@ -228,24 +267,16 @@ app.post('/api/projects/:id/images', upload.array('images', 200), wrap(async (re
   const nextOrder = p.images.reduce((m, i) => Math.max(m, i.sort_order ?? 0), -1) + 1;
 
   const inserted = await Promise.all(req.files.map(async (f, i) => {
-    const optimized = await optimizeImage(f.buffer);
-    const name = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+    const [optimized, thumb] = await Promise.all([
+      optimizeImage(f.buffer),
+      makeThumb(f.buffer)
+    ]);
+    const [filename, thumbFilename] = await Promise.all([
+      storeImageBuffer(optimized),
+      storeImageBuffer(thumb)
+    ]);
 
-    let filename;
-    if (USE_BLOB) {
-      const blob = await put(`images/${name}`, optimized, {
-        access: 'public',
-        addRandomSuffix: false,
-        allowOverwrite: true,
-        contentType: 'image/jpeg'
-      });
-      filename = blob.url;
-    } else {
-      fs.writeFileSync(path.join(UPLOADS, name), optimized);
-      filename = name;
-    }
-
-    return { id: nextImgId + i, filename, sort_order: nextOrder + i };
+    return { id: nextImgId + i, filename, thumbFilename, sort_order: nextOrder + i };
   }));
 
   p.images.push(...inserted);
@@ -288,7 +319,7 @@ app.delete('/api/images/:id', wrap(async (req, res) => {
   for (const p of db.projects) {
     const img = p.images.find(i => i.id === id);
     if (img) {
-      await deleteImageFile(img.filename);
+      await deleteImageRecord(img);
       p.images = p.images.filter(i => i.id !== id);
       break;
     }
@@ -301,16 +332,16 @@ app.delete('/api/images/:id', wrap(async (req, res) => {
 app.delete('/api/images', wrap(async (req, res) => {
   const db  = await readDB();
   const ids = (req.body.ids || []).map(Number);
-  const filenames = [];
+  const toDelete = [];
   db.projects.forEach(p => {
     const keep = [];
     p.images.forEach(img => {
-      if (ids.includes(img.id)) filenames.push(img.filename);
+      if (ids.includes(img.id)) toDelete.push(img);
       else keep.push(img);
     });
     p.images = keep;
   });
-  await Promise.all(filenames.map(deleteImageFile));
+  await Promise.all(toDelete.map(deleteImageRecord));
   await writeDB(db);
   res.json({ ok: true });
 }));

@@ -23,6 +23,7 @@ const fDesc           = document.getElementById('f-desc');
 const saveBtn         = document.getElementById('save-btn');
 const saveStatus      = document.getElementById('save-status');
 const deleteProjBtn   = document.getElementById('delete-project-btn');
+const publishToggleBtn = document.getElementById('publish-toggle-btn');
 const imageGrid       = document.getElementById('image-grid');
 const dropZone        = document.getElementById('drop-zone');
 const dropHint        = document.getElementById('drop-hint');
@@ -46,7 +47,7 @@ async function init() {
 }
 
 async function loadProjects() {
-  const res = await fetch('/api/projects');
+  const res = await fetch('/api/projects?all=1');
   projects = await res.json();
   renderProjectList();
 }
@@ -59,13 +60,15 @@ async function loadAbout() {
 function renderProjectList() {
   projectList.innerHTML = '';
   projects.forEach(p => {
+    const isDraft = p.published === false;
     const li = document.createElement('li');
-    li.className = 'project-item' + (p.id === activeId ? ' active' : '');
+    li.className = 'project-item' + (p.id === activeId ? ' active' : '') + (isDraft ? ' is-draft' : '');
     li.dataset.id = p.id;
     li.innerHTML = `
       <input type="checkbox" class="project-item-check" ${selectedProjectIds.has(p.id) ? 'checked' : ''}>
       <span class="project-item-drag" title="Trascina per riordinare">⠿</span>
       <span class="project-item-name">${p.title || '(senza titolo)'}</span>
+      ${isDraft ? '<span class="project-item-badge">Bozza</span>' : ''}
       <span class="project-item-meta">${p.images.length} img</span>
     `;
     const checkbox = li.querySelector('.project-item-check');
@@ -120,6 +123,7 @@ function selectProject(id) {
   fClient.value = p.client || '';
   fYear.value   = p.year   || '';
   fDesc.value   = p.description || '';
+  updatePublishButton(p);
 
   aboutEditor.hidden = true;
   editorEmpty.hidden = true;
@@ -180,6 +184,27 @@ async function saveProject() {
   flashStatus('Salvato ✓');
 }
 
+function updatePublishButton(p) {
+  const isDraft = p.published === false;
+  publishToggleBtn.textContent = isDraft ? 'Pubblica' : 'Riporta in bozza';
+}
+
+async function toggleProjectPublished() {
+  const p = projects.find(x => x.id === activeId);
+  if (!p) return;
+  const published = p.published === false; // currently draft → publish, and vice versa
+  const res = await fetch(`/api/projects/${activeId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ published })
+  });
+  const updated = await res.json();
+  p.published = updated.published;
+  updatePublishButton(p);
+  renderProjectList();
+  flashStatus(published ? 'Pubblicato ✓' : 'Spostato in bozza ✓');
+}
+
 function flashStatus(msg) {
   saveStatus.textContent = msg;
   setTimeout(() => { saveStatus.textContent = ''; }, 2000);
@@ -195,13 +220,14 @@ function renderImages(images) {
     const wrap = document.createElement('div');
     wrap.className = 'img-card-wrap';
     wrap.dataset.id = img.id;
-    const src = img.filename.startsWith('http') ? img.filename : `/uploads/${img.filename}`;
+    const thumb = img.thumbFilename || img.filename;
+    const src = thumb.startsWith('http') ? thumb : `/uploads/${thumb}`;
     wrap.innerHTML = `
       <div class="img-card">
         <label class="img-check-wrap">
           <input type="checkbox" class="img-check" ${selectedImageIds.has(img.id) ? 'checked' : ''}>
         </label>
-        <img src="${src}" alt="">
+        <img src="${src}" alt="" loading="lazy" decoding="async">
         <span class="img-card-num">${String(i + 1).padStart(2, '0')}</span>
         <button class="img-delete" title="Elimina">×</button>
       </div>
@@ -423,6 +449,9 @@ function bindEvents() {
   [fTitle, fClient, fYear, fDesc].forEach(el => {
     el.addEventListener('keydown', e => { if (e.key === 'Enter') saveProject(); });
   });
+
+  // Publish / unpublish
+  publishToggleBtn.addEventListener('click', toggleProjectPublished);
 
   // Delete project
   deleteProjBtn.addEventListener('click', () => {

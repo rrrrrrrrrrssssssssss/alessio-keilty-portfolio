@@ -129,6 +129,21 @@ html, body {
   flex-shrink: 0;
 }
 
+.project-item-badge {
+  flex-shrink: 0;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 2px 5px;
+}
+
+.project-item.is-draft .project-item-name {
+  color: var(--muted);
+}
+
 /* ─── Editor ──────────────────────────────────────────── */
 #editor {
   flex: 1;
@@ -151,6 +166,12 @@ html, body {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 28px;
+}
+
+#form-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 #form-title {
