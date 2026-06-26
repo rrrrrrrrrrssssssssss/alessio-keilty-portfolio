@@ -92,13 +92,13 @@ async function deleteImageRecord(img) {
 }
 
 async function storeImageBuffer(buffer) {
-  const name = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+  const name = `${Date.now()}-${Math.random().toString(36).slice(2)}.webp`;
   if (USE_BLOB) {
     const blob = await put(`images/${name}`, buffer, {
       access: 'public',
       addRandomSuffix: false,
       allowOverwrite: true,
-      contentType: 'image/jpeg'
+      contentType: 'image/webp'
     });
     return blob.url;
   }
@@ -109,16 +109,17 @@ async function storeImageBuffer(buffer) {
 // ─── Image optimization ────────────────────────────────────────────────────────
 // Camera originals are often huge (10-30MB, 6000px+) — way more than any screen
 // needs. Resize to a long-edge cap that still looks sharp full-screen on retina
-// displays, and re-encode as a compressed JPEG. Runs on every upload, regardless
-// of storage backend, so both local disk and Vercel Blob get the same lighter file.
+// displays, and re-encode as WebP (~30-40% lighter than JPEG at equivalent
+// visual quality). Runs on every upload, regardless of storage backend, so
+// both local disk and Vercel Blob get the same lighter file.
 const MAX_DIMENSION = 2400;
-const JPEG_QUALITY   = 85;
+const WEBP_QUALITY   = 80;
 
 // Thumbnails: used everywhere an image shows up small but many-at-once (the
 // gallery index grid, the sidebar filmstrip) — no point shipping a 2400px
 // file for a 76px-wide thumbnail. Long edge is generous enough for retina.
 const THUMB_DIMENSION = 360;
-const THUMB_QUALITY   = 75;
+const THUMB_QUALITY   = 70;
 
 async function optimizeImage(buffer) {
   const image = sharp(buffer, { failOn: 'none' }).rotate(); // auto-orient from EXIF, then strip it
@@ -126,14 +127,14 @@ async function optimizeImage(buffer) {
   if ((meta.width || 0) > MAX_DIMENSION || (meta.height || 0) > MAX_DIMENSION) {
     image.resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: 'inside', withoutEnlargement: true });
   }
-  return image.jpeg({ quality: JPEG_QUALITY, mozjpeg: true }).toBuffer();
+  return image.webp({ quality: WEBP_QUALITY, effort: 4 }).toBuffer();
 }
 
 async function makeThumb(buffer) {
   return sharp(buffer, { failOn: 'none' })
     .rotate()
     .resize({ width: THUMB_DIMENSION, height: THUMB_DIMENSION, fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality: THUMB_QUALITY, mozjpeg: true })
+    .webp({ quality: THUMB_QUALITY, effort: 4 })
     .toBuffer();
 }
 

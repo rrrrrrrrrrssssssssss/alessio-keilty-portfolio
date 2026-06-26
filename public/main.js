@@ -70,6 +70,10 @@ async function init() {
   buildIndex();
   goTo(0);
   bindEvents();
+
+  // Direct/shared link landing on #index or #about
+  if (location.hash === '#index') openGridVisual();
+  else if (location.hash === '#about') openAboutVisual();
 }
 
 /* ─── Carousel ───────────────────────────────────────────────────── */
@@ -328,8 +332,14 @@ function bindEvents() {
   document.getElementById('author-name').addEventListener('click', () => {
     if (document.body.classList.contains('about-open')) {
       closeAbout();
+    } else if (gridOverlay.classList.contains('open')) {
+      // Index → About directly: a single history transition (push '#about'
+      // on top of '#index'), not "go back, then push" — calling history.back()
+      // and pushState right after it would race against each other.
+      closeGridVisual(true);
+      if (location.hash !== '#about') history.pushState(null, '', '#about');
+      openAboutVisual();
     } else {
-      if (gridOverlay.classList.contains('open')) closeGrid();
       openAbout();
     }
   });
@@ -379,7 +389,50 @@ function bindEvents() {
   });
 }
 
+// Index/About are pushed onto browser history as #index / #about, so the
+// hardware/browser back button closes them and returns to the main page.
+// open*()/close*() are the entry points used by clicks, swipes, etc. — they
+// just navigate history; the popstate handler below calls the *Visual
+// functions that actually do the work, so there is one code path whether
+// the close was triggered in-app or via the browser's back button.
 function openGrid() {
+  if (location.hash !== '#index') history.pushState(null, '', '#index');
+  openGridVisual();
+}
+
+function closeGrid(keepAbout = false) {
+  if (location.hash === '#index') { history.back(); return; }
+  closeGridVisual(keepAbout);
+}
+
+function openAbout() {
+  if (location.hash !== '#about') history.pushState(null, '', '#about');
+  openAboutVisual();
+}
+
+function closeAbout() {
+  if (location.hash === '#about') { history.back(); return; }
+  closeAboutVisual();
+}
+
+window.addEventListener('popstate', () => {
+  if (gridOverlay.classList.contains('open') && location.hash !== '#index') {
+    closeGridVisual(document.body.classList.contains('about-open'));
+  }
+  if (document.body.classList.contains('about-open') && location.hash !== '#about') {
+    closeAboutVisual();
+  }
+  // Forward navigation (or a direct/shared link) landing on a hash while
+  // its overlay isn't open yet.
+  if (location.hash === '#index' && !gridOverlay.classList.contains('open')) {
+    openGridVisual();
+  }
+  if (location.hash === '#about' && !document.body.classList.contains('about-open')) {
+    openAboutVisual();
+  }
+});
+
+function openGridVisual() {
   indexCols.scrollLeft = 0;
   indexCols.scrollTop = 0;
   gridOverlay.removeAttribute('hidden');
@@ -389,10 +442,10 @@ function openGrid() {
   crossFadeLabel(expandBtn, 'Back');
 }
 
-function closeGrid(keepAbout = false) {
+function closeGridVisual(keepAbout = false) {
   if (!keepAbout && document.body.classList.contains('about-open')) {
     // Grid (z-index 50) covers everything — reset About state silently with no animations.
-    // Calling closeAbout() here would trigger its viewport transitions and fight the grid slide-out.
+    // Calling closeAboutVisual() here would trigger its viewport transitions and fight the grid slide-out.
     closeAboutTimers.forEach(clearTimeout);
     closeAboutTimers = [];
     document.body.classList.remove('about-open', 'about-closing');
@@ -488,7 +541,7 @@ function hideMetaBack() {
   setTimeout(cleanup, 750);
 }
 
-function openAbout() {
+function openAboutVisual() {
   closeAboutTimers.forEach(clearTimeout);
   closeAboutTimers = [];
   document.body.classList.remove('about-closing');
@@ -497,7 +550,7 @@ function openAbout() {
   document.body.classList.add('about-open');
 }
 
-function closeAbout() {
+function closeAboutVisual() {
   if (!document.body.classList.contains('about-open')) return;
 
   closeAboutTimers.forEach(clearTimeout);

@@ -97,8 +97,12 @@ html, body {
 }
 
 .slide img {
-  max-width: 100%;
-  max-height: 100%;
+  /* width/height (not max-width/max-height): max-* only ever shrinks, never
+     enlarges, so an image smaller than the slide box would render at its
+     native pixel size instead of filling the box. object-fit handles the
+     actual scaling (up or down) while preserving aspect ratio. */
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   display: block;
   pointer-events: none;
