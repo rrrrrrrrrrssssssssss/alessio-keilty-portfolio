@@ -225,10 +225,16 @@ function setupElasticBounce(el) {
     if (cs.overflowY === 'auto' || cs.overflowY === 'scroll') return 'y';
     return null; // not an active scroll container at the current viewport width
   }
-  function isScrollable(ax) {
+  // At the start/end of the real native scroll range — including the
+  // trivial case where there's no scroll range at all (too little content),
+  // where both are always true. Using the boundary rather than "does this
+  // overflow at all" means the bounce also kicks in at the edges of a
+  // genuinely scrollable project, same as the native behavior it's matching.
+  function atStart(ax) { return ax === 'x' ? el.scrollLeft <= 0 : el.scrollTop <= 0; }
+  function atEnd(ax) {
     return ax === 'x'
-      ? el.scrollWidth  > el.clientWidth  + 1
-      : el.scrollHeight > el.clientHeight + 1;
+      ? el.scrollLeft + el.clientWidth  >= el.scrollWidth  - 1
+      : el.scrollTop  + el.clientHeight >= el.scrollHeight - 1;
   }
 
   let dragging = false;
@@ -251,7 +257,7 @@ function setupElasticBounce(el) {
 
   el.addEventListener('pointerdown', e => {
     const ax = axis();
-    if (!ax || isScrollable(ax)) return; // no scroll axis here, or plenty of content — let native scroll handle it
+    if (!ax || !atStart(ax) || !atEnd(ax)) return; // has real scroll room — let native scroll handle it
     dragging = true;
     dragAxis = ax;
     pointerId = e.pointerId;
@@ -274,18 +280,26 @@ function setupElasticBounce(el) {
   el.addEventListener('pointercancel', endDrag);
   el.addEventListener('pointerleave', e => { if (dragging) endDrag(e); });
 
-  // Trackpad/mouse wheel. Resistance grows the further it's pulled (via
-  // tanh) instead of clamping hard at a limit, so a long scroll gesture
-  // (trackpad inertia keeps sending events for a while) reads as elastic
-  // rather than stuck against a wall.
+  // Trackpad/mouse wheel. Only takes over once the pull direction has no
+  // more native scroll room left (which is always true when there isn't
+  // enough content to scroll at all). Resistance grows the further it's
+  // pulled (via tanh) instead of clamping hard at a limit, so a long scroll
+  // gesture (trackpad inertia keeps sending events for a while) reads as
+  // elastic rather than stuck against a wall.
   const MAX_PULL = 50;
   let wheelEndTimer = null;
   let rawAccum = 0;
   el.addEventListener('wheel', e => {
     const ax = axis();
-    if (!ax || isScrollable(ax)) return;
-    e.preventDefault();
+    if (!ax) return;
     const delta = ax === 'y' ? e.deltaY : e.deltaX;
+    const pullingPastStart = delta < 0 && atStart(ax);
+    const pullingPastEnd   = delta > 0 && atEnd(ax);
+    if (!pullingPastStart && !pullingPastEnd) {
+      if (rawAccum !== 0) { rawAccum = 0; clearTimeout(wheelEndTimer); springBack(); }
+      return; // real scroll room in this direction — let native scrolling happen
+    }
+    e.preventDefault();
     rawAccum -= delta * 0.3;
     dragAxis = ax;
     el.style.transition = 'none';
