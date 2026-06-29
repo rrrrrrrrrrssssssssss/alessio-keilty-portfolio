@@ -371,6 +371,12 @@ body.index-open #bottom-bar {
   gap: 2px;
 }
 
+/* Desktop: no separate scroll/clip boundary needed, so the inner wrapper
+   used for the mobile elastic bounce just passes through. */
+.col-images-inner {
+  display: contents;
+}
+
 .col-thumb {
   display: flex;
   align-items: flex-start;
@@ -689,16 +695,25 @@ body.about-open.about-closing #viewport {
     display: contents;
   }
 
+  /* The fixed scroll/clip boundary: stays put so thumbnails disappear
+     behind the page margins while scrolling, same as every other project.
+     The actual flex row layout lives on .col-images-inner instead, since
+     that's the element the elastic bounce transforms when a project has
+     too few photos to scroll for real. */
   .col-images {
-    display: flex;
-    flex-direction: row;
+    display: block;
     height: auto;
     overflow-x: auto;
     overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    gap: 2px;
     width: 100%;
+  }
+
+  .col-images-inner {
+    display: inline-flex;
+    flex-direction: row;
+    gap: 2px;
   }
 
   .col-images::-webkit-scrollbar { display: none; }

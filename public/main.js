@@ -146,6 +146,9 @@ function buildIndex() {
     const colImages = document.createElement('div');
     colImages.className = 'col-images';
 
+    const colImagesInner = document.createElement('div');
+    colImagesInner.className = 'col-images-inner';
+
     project.images.forEach((image, idx) => {
       const globalIdx = items.findIndex(it => it.image === image);
       const thumb = document.createElement('div');
@@ -165,7 +168,7 @@ function buildIndex() {
       thumb.appendChild(img);
       thumb.appendChild(num);
       thumb.addEventListener('click', () => { closeGrid(); goTo(globalIdx); });
-      colImages.appendChild(thumb);
+      colImagesInner.appendChild(thumb);
     });
 
     const titleYear = [project.title, project.year].filter(Boolean).join(', ');
@@ -183,7 +186,7 @@ function buildIndex() {
       } else {
         titleInline.textContent = titleYear;
       }
-      colImages.appendChild(titleInline);
+      colImagesInner.appendChild(titleInline);
     }
 
     const colMeta = document.createElement('div');
@@ -193,6 +196,7 @@ function buildIndex() {
     if (project.client)      { const el = document.createElement('div'); el.className = 'col-client'; el.textContent = project.client; colMeta.appendChild(el); }
     if (project.description) { const el = document.createElement('div'); el.className = 'col-desc'; el.textContent = project.description; colMeta.appendChild(el); }
 
+    colImages.appendChild(colImagesInner);
     col.appendChild(colImages);
     col.appendChild(colMeta);
 
@@ -217,7 +221,7 @@ function buildIndex() {
 // "pull and spring back" feel browsers already show at the start/end of a
 // real scroll — purely touch/drag feedback, never interfering with normal
 // scrolling once a project has enough photos to need it.
-function setupElasticBounce(el) {
+function setupElasticBounce(el, transformEl = el) {
   function axis() {
     const cs = getComputedStyle(el);
     if (cs.display === 'contents') return null; // no box generated (e.g. .project-col on mobile) — nothing to scroll
@@ -243,15 +247,15 @@ function setupElasticBounce(el) {
   let dragAxis = null;
 
   function setOffset(px) {
-    el.style.transform = dragAxis === 'y' ? `translateY(${px}px)` : `translateX(${px}px)`;
+    transformEl.style.transform = dragAxis === 'y' ? `translateY(${px}px)` : `translateX(${px}px)`;
   }
 
   function springBack() {
-    el.style.transition = 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)';
+    transformEl.style.transition = 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)';
     setOffset(0);
-    el.addEventListener('transitionend', function onEnd() {
-      el.style.transition = '';
-      el.removeEventListener('transitionend', onEnd);
+    transformEl.addEventListener('transitionend', function onEnd() {
+      transformEl.style.transition = '';
+      transformEl.removeEventListener('transitionend', onEnd);
     }, { once: true });
   }
 
@@ -262,7 +266,7 @@ function setupElasticBounce(el) {
     dragAxis = ax;
     pointerId = e.pointerId;
     startPos = ax === 'y' ? e.clientY : e.clientX;
-    el.style.transition = 'none';
+    transformEl.style.transition = 'none';
   });
 
   el.addEventListener('pointermove', e => {
@@ -302,7 +306,7 @@ function setupElasticBounce(el) {
     e.preventDefault();
     rawAccum -= delta * 0.3;
     dragAxis = ax;
-    el.style.transition = 'none';
+    transformEl.style.transition = 'none';
     setOffset(MAX_PULL * Math.tanh(rawAccum / MAX_PULL));
     clearTimeout(wheelEndTimer);
     wheelEndTimer = setTimeout(() => { rawAccum = 0; springBack(); }, 120);
@@ -322,7 +326,15 @@ function setupIndexElasticBounce() {
   // Desktop (.project-col) is left on native scrolling only — the custom
   // bounce there behaved inconsistently across interactions and wasn't
   // worth the complexity. Mobile (.col-images) keeps it.
-  document.querySelectorAll('.col-images').forEach(setupElasticBounce);
+  //
+  // The transform is applied to .col-images-inner (the thumbnails wrapper),
+  // not to .col-images itself: .col-images is the fixed clipping boundary
+  // that makes thumbnails disappear behind the page margins while
+  // scrolling, same as every other project. Transforming it directly would
+  // have dragged that boundary along with the content instead.
+  document.querySelectorAll('.col-images').forEach(el => {
+    setupElasticBounce(el, el.querySelector('.col-images-inner'));
+  });
 }
 
 /* ─── Update UI ──────────────────────────────────────────────────── */
