@@ -675,6 +675,9 @@ body.about-open.about-closing #viewport {
     -webkit-overflow-scrolling: touch;
     align-items: stretch;
     padding: var(--pad);
+    /* Clears the fixed bottom bar (Index/Expand) so the last project isn't
+       hidden underneath it. */
+    padding-bottom: 56px;
     gap: 3px;
   }
 

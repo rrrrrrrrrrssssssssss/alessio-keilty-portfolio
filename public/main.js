@@ -274,21 +274,34 @@ function setupElasticBounce(el) {
   el.addEventListener('pointercancel', endDrag);
   el.addEventListener('pointerleave', e => { if (dragging) endDrag(e); });
 
-  // Trackpad/mouse wheel
+  // Trackpad/mouse wheel. Resistance grows the further it's pulled (via
+  // tanh) instead of clamping hard at a limit, so a long scroll gesture
+  // (trackpad inertia keeps sending events for a while) reads as elastic
+  // rather than stuck against a wall.
+  const MAX_PULL = 50;
   let wheelEndTimer = null;
+  let rawAccum = 0;
   el.addEventListener('wheel', e => {
     const ax = axis();
     if (!ax || isScrollable(ax)) return;
     e.preventDefault();
     const delta = ax === 'y' ? e.deltaY : e.deltaX;
-    const current = (el.style.transform.match(/-?\d+\.?\d*/) || [0])[0];
-    const next = Math.max(-50, Math.min(50, Number(current) - delta * 0.3));
+    rawAccum -= delta * 0.3;
     dragAxis = ax;
     el.style.transition = 'none';
-    setOffset(next);
+    setOffset(MAX_PULL * Math.tanh(rawAccum / MAX_PULL));
     clearTimeout(wheelEndTimer);
-    wheelEndTimer = setTimeout(springBack, 120);
+    wheelEndTimer = setTimeout(() => { rawAccum = 0; springBack(); }, 120);
   }, { passive: false });
+
+  // Leaving the element immediately snaps it back rather than waiting for
+  // the wheel-silence timeout, which could otherwise look stuck while the
+  // cursor lingered (e.g. during trackpad momentum scrolling).
+  el.addEventListener('mouseleave', () => {
+    clearTimeout(wheelEndTimer);
+    rawAccum = 0;
+    springBack();
+  });
 }
 
 function setupIndexElasticBounce() {
