@@ -319,7 +319,10 @@ function setupElasticBounce(el) {
 }
 
 function setupIndexElasticBounce() {
-  document.querySelectorAll('.project-col, .col-images').forEach(setupElasticBounce);
+  // Desktop (.project-col) is left on native scrolling only — the custom
+  // bounce there behaved inconsistently across interactions and wasn't
+  // worth the complexity. Mobile (.col-images) keeps it.
+  document.querySelectorAll('.col-images').forEach(setupElasticBounce);
 }
 
 /* ─── Update UI ──────────────────────────────────────────────────── */
