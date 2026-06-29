@@ -255,7 +255,7 @@ function setupElasticBounce(el, transformEl = el) {
   }
 
   function springBack() {
-    transformEl.style.transition = 'transform 0.2s cubic-bezier(0.22, 1, 0.36, 1)';
+    transformEl.style.transition = 'transform 0.12s ease-out';
     setOffset(0);
     transformEl.addEventListener('transitionend', function onEnd() {
       transformEl.style.transition = '';
@@ -299,7 +299,7 @@ function setupElasticBounce(el, transformEl = el) {
   // actually stopped scrolling, with no reliable way to tell that tail
   // apart from genuine input, so it is not worth waiting on event silence.
   const MAX_PULL = 50;
-  const HOLD_MS = 50;
+  const HOLD_MS = 16;
   let wheelEndTimer = null;
   let rawAccum = 0;
 
