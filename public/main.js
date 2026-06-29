@@ -255,7 +255,7 @@ function setupElasticBounce(el, transformEl = el) {
   }
 
   function springBack() {
-    transformEl.style.transition = 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)';
+    transformEl.style.transition = 'transform 0.2s cubic-bezier(0.22, 1, 0.36, 1)';
     setOffset(0);
     transformEl.addEventListener('transitionend', function onEnd() {
       transformEl.style.transition = '';
