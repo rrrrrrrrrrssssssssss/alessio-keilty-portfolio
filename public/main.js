@@ -197,12 +197,8 @@ function buildIndex() {
     if (project.description) { const el = document.createElement('div'); el.className = 'col-desc'; el.textContent = project.description; colMeta.appendChild(el); }
 
     colImages.appendChild(colImagesInner);
-
-    const colInner = document.createElement('div');
-    colInner.className = 'project-col-inner';
-    colInner.appendChild(colImages);
-    colInner.appendChild(colMeta);
-    col.appendChild(colInner);
+    col.appendChild(colImages);
+    col.appendChild(colMeta);
 
     const colGap = document.createElement('div');
     colGap.className = 'col-gap';
@@ -255,7 +251,7 @@ function setupElasticBounce(el, transformEl = el) {
   }
 
   function springBack() {
-    transformEl.style.transition = 'transform 0.12s ease-out';
+    transformEl.style.transition = 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)';
     setOffset(0);
     transformEl.addEventListener('transitionend', function onEnd() {
       transformEl.style.transition = '';
@@ -290,48 +286,54 @@ function setupElasticBounce(el, transformEl = el) {
 
   // Trackpad/mouse wheel. Only takes over once the pull direction has no
   // more native scroll room left (which is always true when there isn't
-  // enough content to scroll at all).
-  //
-  // A single "click" of a wheel is often delivered as a short burst of
-  // several synthetic events (OS-level smooth-scroll expansion) rather than
-  // one event. Trying to resolve per-event (on a timer that each new event
-  // re-extends, or that forces an early cutoff) either drags out the whole
-  // burst or, if cut off too early, lets a still-arriving trailing event
-  // read as the start of a brand new pull — bouncing again right after it
-  // just settled. Instead, the first event of a burst fires one fixed pulse
-  // (out and back), and every other event arriving before that pulse
-  // finishes is ignored, so a whole burst always produces exactly one
-  // bounce no matter how many events it is made of.
+  // enough content to scroll at all). Resistance grows the further it's
+  // pulled (via tanh) instead of clamping hard at a limit, so a long scroll
+  // gesture (trackpad inertia keeps sending events for a while) reads as
+  // elastic rather than stuck against a wall.
   const MAX_PULL = 50;
-  let pulsing = false;
-
+  let wheelEndTimer = null;
+  let rawAccum = 0;
   el.addEventListener('wheel', e => {
     const ax = axis();
     if (!ax) return;
     const delta = ax === 'y' ? e.deltaY : e.deltaX;
     const pullingPastStart = delta < 0 && atStart(ax);
     const pullingPastEnd   = delta > 0 && atEnd(ax);
-    if (!pullingPastStart && !pullingPastEnd) return; // real scroll room — let native scrolling happen
+    if (!pullingPastStart && !pullingPastEnd) {
+      if (rawAccum !== 0) { rawAccum = 0; clearTimeout(wheelEndTimer); springBack(); }
+      return; // real scroll room in this direction — let native scrolling happen
+    }
     e.preventDefault();
-    if (pulsing) return; // mid-bounce already for this gesture — absorb the rest of the burst
-    pulsing = true;
+    rawAccum -= delta * 0.3;
     dragAxis = ax;
     transformEl.style.transition = 'none';
-    setOffset(Math.max(-MAX_PULL, Math.min(MAX_PULL, -delta * 0.3)));
-    requestAnimationFrame(springBack);
-    setTimeout(() => { pulsing = false; }, 150);
+    setOffset(MAX_PULL * Math.tanh(rawAccum / MAX_PULL));
+    clearTimeout(wheelEndTimer);
+    wheelEndTimer = setTimeout(() => { rawAccum = 0; springBack(); }, 120);
   }, { passive: false });
+
+  // Leaving the element immediately snaps it back rather than waiting for
+  // the wheel-silence timeout, which could otherwise look stuck while the
+  // cursor lingered (e.g. during trackpad momentum scrolling).
+  el.addEventListener('mouseleave', () => {
+    clearTimeout(wheelEndTimer);
+    rawAccum = 0;
+    springBack();
+  });
 }
 
 function setupIndexElasticBounce() {
-  // The transform always targets the *-inner wrapper, never the scrollable
-  // element itself: that element is also the fixed clipping boundary that
-  // makes content disappear behind the page margins/header while
+  // Desktop (.project-col) is left on native scrolling only — the custom
+  // bounce there behaved inconsistently across interactions and wasn't
+  // worth the complexity. Mobile (.col-images) keeps it.
+  //
+  // The transform is applied to .col-images-inner (the thumbnails wrapper),
+  // not to .col-images itself: .col-images is the fixed clipping boundary
+  // that makes thumbnails disappear behind the page margins while
   // scrolling, same as every other project. Transforming it directly would
-  // drag that boundary along with the content instead.
-  document.querySelectorAll('.col-images, .project-col').forEach(el => {
-    const inner = el.querySelector(':scope > .col-images-inner, :scope > .project-col-inner');
-    setupElasticBounce(el, inner);
+  // have dragged that boundary along with the content instead.
+  document.querySelectorAll('.col-images').forEach(el => {
+    setupElasticBounce(el, el.querySelector('.col-images-inner'));
   });
 }
 

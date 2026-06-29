@@ -353,24 +353,17 @@ body.index-open #bottom-bar {
   width: var(--sw);
 }
 
-/* The fixed scroll/clip boundary: stays put so content disappears behind
-   the index header while scrolling. The actual vertical layout lives on
-   .project-col-inner instead, since that's the element the elastic bounce
-   transforms when a project has too few photos to scroll for real. */
 .project-col {
   flex-shrink: 0;
   width: calc(var(--sw) + 20px);
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
 }
 
 .project-col::-webkit-scrollbar { display: none; }
-
-.project-col-inner {
-  display: flex;
-  flex-direction: column;
-}
 
 .col-images {
   display: flex;
@@ -698,8 +691,7 @@ body.about-open.about-closing #viewport {
     width: 100%;
   }
 
-  .project-col,
-  .project-col-inner {
+  .project-col {
     display: contents;
   }
 
