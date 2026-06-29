@@ -292,11 +292,27 @@ function setupElasticBounce(el, transformEl = el) {
   // more native scroll room left (which is always true when there isn't
   // enough content to scroll at all). Resistance grows the further it's
   // pulled (via tanh) instead of clamping hard at a limit, so a long scroll
-  // gesture (trackpad inertia keeps sending events for a while) reads as
-  // elastic rather than stuck against a wall.
+  // gesture reads as elastic rather than stuck against a wall.
+  //
+  // Trackpad inertia keeps sending events for a while after the user has
+  // actually stopped scrolling, with no way to tell genuine input from the
+  // inertial tail — so silence alone isn't a reliable signal to spring
+  // back. MAX_HOLD_MS caps how long a single pull can be held regardless of
+  // how long events keep arriving, so it never looks stuck for more than a
+  // moment even during a long momentum scroll.
   const MAX_PULL = 50;
+  const MAX_HOLD_MS = 300;
   let wheelEndTimer = null;
+  let forceEndTimer = null;
   let rawAccum = 0;
+
+  function endPull() {
+    rawAccum = 0;
+    clearTimeout(wheelEndTimer);
+    clearTimeout(forceEndTimer);
+    springBack();
+  }
+
   el.addEventListener('wheel', e => {
     const ax = axis();
     if (!ax) return;
@@ -304,26 +320,23 @@ function setupElasticBounce(el, transformEl = el) {
     const pullingPastStart = delta < 0 && atStart(ax);
     const pullingPastEnd   = delta > 0 && atEnd(ax);
     if (!pullingPastStart && !pullingPastEnd) {
-      if (rawAccum !== 0) { rawAccum = 0; clearTimeout(wheelEndTimer); springBack(); }
+      if (rawAccum !== 0) endPull();
       return; // real scroll room in this direction — let native scrolling happen
     }
     e.preventDefault();
+    if (rawAccum === 0) forceEndTimer = setTimeout(endPull, MAX_HOLD_MS);
     rawAccum -= delta * 0.3;
     dragAxis = ax;
     transformEl.style.transition = 'none';
     setOffset(MAX_PULL * Math.tanh(rawAccum / MAX_PULL));
     clearTimeout(wheelEndTimer);
-    wheelEndTimer = setTimeout(() => { rawAccum = 0; springBack(); }, 120);
+    wheelEndTimer = setTimeout(endPull, 120);
   }, { passive: false });
 
   // Leaving the element immediately snaps it back rather than waiting for
   // the wheel-silence timeout, which could otherwise look stuck while the
   // cursor lingered (e.g. during trackpad momentum scrolling).
-  el.addEventListener('mouseleave', () => {
-    clearTimeout(wheelEndTimer);
-    rawAccum = 0;
-    springBack();
-  });
+  el.addEventListener('mouseleave', () => { if (rawAccum !== 0) endPull(); });
 }
 
 function setupIndexElasticBounce() {
