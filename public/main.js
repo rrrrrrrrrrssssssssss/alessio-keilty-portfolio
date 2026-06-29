@@ -290,28 +290,20 @@ function setupElasticBounce(el, transformEl = el) {
 
   // Trackpad/mouse wheel. Only takes over once the pull direction has no
   // more native scroll room left (which is always true when there isn't
-  // enough content to scroll at all). Resistance grows the further it's
-  // pulled (via tanh) instead of clamping hard at a limit, so a long scroll
-  // gesture reads as elastic rather than stuck against a wall.
+  // enough content to scroll at all).
   //
-  // Even a single "click" of a wheel is often delivered as a short burst of
-  // several synthetic events (OS-level smooth-scroll expansion), each of
-  // which would otherwise re-extend a per-event timer — so resolving on
-  // event silence alone can still drag out a single short gesture.
-  // CAP_MS bounds the whole pull to a fixed window from its first event,
-  // no matter how many events arrive inside it.
+  // A single "click" of a wheel is often delivered as a short burst of
+  // several synthetic events (OS-level smooth-scroll expansion) rather than
+  // one event. Trying to resolve per-event (on a timer that each new event
+  // re-extends, or that forces an early cutoff) either drags out the whole
+  // burst or, if cut off too early, lets a still-arriving trailing event
+  // read as the start of a brand new pull — bouncing again right after it
+  // just settled. Instead, the first event of a burst fires one fixed pulse
+  // (out and back), and every other event arriving before that pulse
+  // finishes is ignored, so a whole burst always produces exactly one
+  // bounce no matter how many events it is made of.
   const MAX_PULL = 50;
-  const HOLD_MS = 16;
-  const CAP_MS = 70;
-  let wheelEndTimer = null;
-  let rawAccum = 0;
-  let pullStart = 0;
-
-  function endPull() {
-    rawAccum = 0;
-    clearTimeout(wheelEndTimer);
-    springBack();
-  }
+  let pulsing = false;
 
   el.addEventListener('wheel', e => {
     const ax = axis();
@@ -319,26 +311,16 @@ function setupElasticBounce(el, transformEl = el) {
     const delta = ax === 'y' ? e.deltaY : e.deltaX;
     const pullingPastStart = delta < 0 && atStart(ax);
     const pullingPastEnd   = delta > 0 && atEnd(ax);
-    if (!pullingPastStart && !pullingPastEnd) {
-      if (rawAccum !== 0) endPull();
-      return; // real scroll room in this direction — let native scrolling happen
-    }
+    if (!pullingPastStart && !pullingPastEnd) return; // real scroll room — let native scrolling happen
     e.preventDefault();
-    const now = performance.now();
-    if (rawAccum === 0) pullStart = now;
-    rawAccum -= delta * 0.3;
+    if (pulsing) return; // mid-bounce already for this gesture — absorb the rest of the burst
+    pulsing = true;
     dragAxis = ax;
     transformEl.style.transition = 'none';
-    setOffset(MAX_PULL * Math.tanh(rawAccum / MAX_PULL));
-    clearTimeout(wheelEndTimer);
-    const delay = Math.max(4, Math.min(HOLD_MS, CAP_MS - (now - pullStart)));
-    wheelEndTimer = setTimeout(endPull, delay);
+    setOffset(Math.max(-MAX_PULL, Math.min(MAX_PULL, -delta * 0.3)));
+    requestAnimationFrame(springBack);
+    setTimeout(() => { pulsing = false; }, 150);
   }, { passive: false });
-
-  // Leaving the element immediately snaps it back rather than waiting for
-  // the wheel-silence timeout, which could otherwise look stuck while the
-  // cursor lingered (e.g. during trackpad momentum scrolling).
-  el.addEventListener('mouseleave', () => { if (rawAccum !== 0) endPull(); });
 }
 
 function setupIndexElasticBounce() {
