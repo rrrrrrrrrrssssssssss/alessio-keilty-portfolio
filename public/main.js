@@ -197,8 +197,12 @@ function buildIndex() {
     if (project.description) { const el = document.createElement('div'); el.className = 'col-desc'; el.textContent = project.description; colMeta.appendChild(el); }
 
     colImages.appendChild(colImagesInner);
-    col.appendChild(colImages);
-    col.appendChild(colMeta);
+
+    const colInner = document.createElement('div');
+    colInner.className = 'project-col-inner';
+    colInner.appendChild(colImages);
+    colInner.appendChild(colMeta);
+    col.appendChild(colInner);
 
     const colGap = document.createElement('div');
     colGap.className = 'col-gap';
@@ -323,17 +327,14 @@ function setupElasticBounce(el, transformEl = el) {
 }
 
 function setupIndexElasticBounce() {
-  // Desktop (.project-col) is left on native scrolling only — the custom
-  // bounce there behaved inconsistently across interactions and wasn't
-  // worth the complexity. Mobile (.col-images) keeps it.
-  //
-  // The transform is applied to .col-images-inner (the thumbnails wrapper),
-  // not to .col-images itself: .col-images is the fixed clipping boundary
-  // that makes thumbnails disappear behind the page margins while
+  // The transform always targets the *-inner wrapper, never the scrollable
+  // element itself: that element is also the fixed clipping boundary that
+  // makes content disappear behind the page margins/header while
   // scrolling, same as every other project. Transforming it directly would
-  // have dragged that boundary along with the content instead.
-  document.querySelectorAll('.col-images').forEach(el => {
-    setupElasticBounce(el, el.querySelector('.col-images-inner'));
+  // drag that boundary along with the content instead.
+  document.querySelectorAll('.col-images, .project-col').forEach(el => {
+    const inner = el.querySelector(':scope > .col-images-inner, :scope > .project-col-inner');
+    setupElasticBounce(el, inner);
   });
 }
 
