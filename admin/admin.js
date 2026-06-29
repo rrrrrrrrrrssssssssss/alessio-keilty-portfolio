@@ -297,41 +297,101 @@ function updateImageBulkBar() {
   imageBulkDelete.textContent = n > 0 ? `Elimina selezionate (${n})` : 'Elimina selezionate';
 }
 
+// Vercel Serverless Functions reject any request body over 4.5MB, and
+// camera originals routinely exceed that on their own. Re-encode oversized
+// files down to a small JPEG in the browser before upload so the request
+// always stays well under the limit — the server still re-optimizes to
+// WebP afterwards, this is purely about getting the upload there reliably.
+// imageOrientation:'from-image' bakes the EXIF rotation into the redrawn
+// pixels, since canvas-exported JPEGs carry no EXIF for the server to read.
+async function resizeForUpload(file) {
+  const TARGET_MAX_BYTES = 3 * 1024 * 1024;
+  if (file.size <= TARGET_MAX_BYTES) return file;
+
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  } catch {
+    return file; // browser could not decode it client-side — let the server try as-is
+  }
+
+  const MAX_DIM = 2400;
+  const scale = Math.min(1, MAX_DIM / Math.max(bitmap.width, bitmap.height));
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+  bitmap.close?.();
+
+  let blob = null;
+  for (const quality of [0.85, 0.7, 0.55]) {
+    blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (blob && blob.size <= TARGET_MAX_BYTES) break;
+  }
+  if (!blob) return file;
+  return new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
+}
+
+async function uploadOne(file) {
+  const resized = await resizeForUpload(file);
+  const formData = new FormData();
+  formData.append('images', resized);
+  const res = await fetch(`/api/projects/${activeId}/images`, {
+    method: 'POST',
+    body: formData
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Errore server ${res.status}`);
+  }
+  return res.json();
+}
+
+// One request per file rather than one big batched request: keeps each
+// request small regardless of how many files are selected at once, and
+// means a single bad file does not take the whole batch down with it.
 async function uploadFiles(files) {
   if (!files.length || !activeId) return;
 
-  const formData = new FormData();
-  for (const f of files) formData.append('images', f);
-
-  // Show uploading placeholder
   const placeholder = document.createElement('div');
   placeholder.className = 'img-card';
-  placeholder.innerHTML = `<div class="img-uploading">Caricamento...</div>`;
+  const status = document.createElement('div');
+  status.className = 'img-uploading';
+  status.textContent = `Caricamento... 0/${files.length}`;
+  placeholder.appendChild(status);
   imageGrid.appendChild(placeholder);
   dropHint.classList.add('hidden');
 
-  try {
-    const res = await fetch(`/api/projects/${activeId}/images`, {
-      method: 'POST',
-      body: formData
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Errore server ${res.status}`);
-    }
-    const newImgs = await res.json();
-    placeholder.remove();
+  const p = projects.find(x => x.id === activeId);
+  let done = 0, failed = 0;
+  const queue = [...files];
+  const CONCURRENCY = 3;
 
-    // Sync local project images
-    const p = projects.find(x => x.id === activeId);
-    if (p) {
-      p.images = [...p.images, ...newImgs];
-      renderImages(p.images);
-      renderProjectList();
+  async function worker() {
+    while (queue.length) {
+      const file = queue.shift();
+      try {
+        const newImgs = await uploadOne(file);
+        if (p) p.images = [...p.images, ...newImgs];
+      } catch {
+        failed++;
+      }
+      done++;
+      status.textContent = `Caricamento... ${done}/${files.length}`;
     }
-  } catch (err) {
-    placeholder.remove();
-    alert('Errore durante il caricamento.');
+  }
+
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
+
+  placeholder.remove();
+  if (p) {
+    renderImages(p.images);
+    renderProjectList();
+  }
+  if (failed) {
+    alert(`${failed} immagine${failed === 1 ? '' : 'i'} non caricat${failed === 1 ? 'a' : 'e'} correttamente.`);
   }
 }
 
