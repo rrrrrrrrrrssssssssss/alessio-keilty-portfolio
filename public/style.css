@@ -333,6 +333,7 @@ body.index-open #bottom-bar {
   align-items: stretch;
   overflow-x: auto;
   overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   padding: var(--pad);
   padding-top: calc(var(--pad) * 2 + 12px);
@@ -670,6 +671,7 @@ body.about-open.about-closing #viewport {
     flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
     align-items: stretch;
     padding: var(--pad);
     gap: 3px;

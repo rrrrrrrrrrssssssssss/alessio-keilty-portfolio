@@ -68,6 +68,7 @@ async function init() {
   buildTrack();
   buildSidebar();
   buildIndex();
+  setupIndexElasticBounce();
   goTo(0);
   bindEvents();
 
@@ -206,6 +207,73 @@ function buildIndex() {
     unit.appendChild(colGap);
     indexCols.appendChild(unit);
   });
+}
+
+// When there are too few projects/images to actually overflow #index-cols,
+// native scrolling never engages (nothing to scroll), so dragging does
+// nothing at all. This adds the same elastic "pull and spring back" feel
+// natively used at the start/end of a real scroll, purely as touch/drag
+// feedback — it never interferes with normal scrolling once there's enough
+// content to need it.
+function setupIndexElasticBounce() {
+  const axis = () => (window.innerWidth <= 768 ? 'y' : 'x');
+  const isScrollable = () => axis() === 'y'
+    ? indexCols.scrollHeight > indexCols.clientHeight + 1
+    : indexCols.scrollWidth  > indexCols.clientWidth  + 1;
+
+  let dragging = false;
+  let startPos = 0;
+  let pointerId = null;
+
+  function setOffset(px) {
+    indexCols.style.transform = axis() === 'y' ? `translateY(${px}px)` : `translateX(${px}px)`;
+  }
+
+  function springBack() {
+    indexCols.style.transition = 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)';
+    setOffset(0);
+    indexCols.addEventListener('transitionend', function onEnd() {
+      indexCols.style.transition = '';
+      indexCols.removeEventListener('transitionend', onEnd);
+    }, { once: true });
+  }
+
+  indexCols.addEventListener('pointerdown', e => {
+    if (isScrollable()) return; // plenty of content — let native scroll handle it
+    dragging = true;
+    pointerId = e.pointerId;
+    startPos = axis() === 'y' ? e.clientY : e.clientX;
+    indexCols.style.transition = 'none';
+  });
+
+  indexCols.addEventListener('pointermove', e => {
+    if (!dragging || e.pointerId !== pointerId) return;
+    const pos = axis() === 'y' ? e.clientY : e.clientX;
+    setOffset((pos - startPos) * 0.4); // resistance, like pulling against a spring
+  });
+
+  function endDrag(e) {
+    if (!dragging || e.pointerId !== pointerId) return;
+    dragging = false;
+    springBack();
+  }
+  indexCols.addEventListener('pointerup', endDrag);
+  indexCols.addEventListener('pointercancel', endDrag);
+  indexCols.addEventListener('pointerleave', e => { if (dragging) endDrag(e); });
+
+  // Trackpad/mouse wheel on desktop
+  let wheelEndTimer = null;
+  indexCols.addEventListener('wheel', e => {
+    if (isScrollable()) return;
+    e.preventDefault();
+    const delta = axis() === 'y' ? e.deltaY : e.deltaX;
+    const current = (indexCols.style.transform.match(/-?\d+\.?\d*/) || [0])[0];
+    const next = Math.max(-50, Math.min(50, Number(current) - delta * 0.3));
+    indexCols.style.transition = 'none';
+    setOffset(next);
+    clearTimeout(wheelEndTimer);
+    wheelEndTimer = setTimeout(springBack, 120);
+  }, { passive: false });
 }
 
 /* ─── Update UI ──────────────────────────────────────────────────── */
