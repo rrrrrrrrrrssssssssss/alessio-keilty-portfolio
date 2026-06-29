@@ -360,6 +360,7 @@ body.index-open #bottom-bar {
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 
@@ -692,6 +693,7 @@ body.about-open.about-closing #viewport {
     height: auto;
     overflow-x: auto;
     overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     gap: 2px;
     width: 100%;

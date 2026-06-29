@@ -209,46 +209,59 @@ function buildIndex() {
   });
 }
 
-// When there are too few projects/images to actually overflow #index-cols,
-// native scrolling never engages (nothing to scroll), so dragging does
-// nothing at all. This adds the same elastic "pull and spring back" feel
-// natively used at the start/end of a real scroll, purely as touch/drag
-// feedback — it never interferes with normal scrolling once there's enough
-// content to need it.
-function setupIndexElasticBounce() {
-  const axis = () => (window.innerWidth <= 768 ? 'y' : 'x');
-  const isScrollable = () => axis() === 'y'
-    ? indexCols.scrollHeight > indexCols.clientHeight + 1
-    : indexCols.scrollWidth  > indexCols.clientWidth  + 1;
+// Each project's own image strip (.project-col on desktop, scrolling
+// vertically; .col-images on mobile, scrolling horizontally) only gets
+// native scroll/rubber-band behavior if it actually has enough photos to
+// overflow. A project with too few photos has nothing to scroll, so
+// dragging it normally does nothing at all. This adds the same elastic
+// "pull and spring back" feel browsers already show at the start/end of a
+// real scroll — purely touch/drag feedback, never interfering with normal
+// scrolling once a project has enough photos to need it.
+function setupElasticBounce(el) {
+  function axis() {
+    const cs = getComputedStyle(el);
+    if (cs.display === 'contents') return null; // no box generated (e.g. .project-col on mobile) — nothing to scroll
+    if (cs.overflowX === 'auto' || cs.overflowX === 'scroll') return 'x';
+    if (cs.overflowY === 'auto' || cs.overflowY === 'scroll') return 'y';
+    return null; // not an active scroll container at the current viewport width
+  }
+  function isScrollable(ax) {
+    return ax === 'x'
+      ? el.scrollWidth  > el.clientWidth  + 1
+      : el.scrollHeight > el.clientHeight + 1;
+  }
 
   let dragging = false;
   let startPos = 0;
   let pointerId = null;
+  let dragAxis = null;
 
   function setOffset(px) {
-    indexCols.style.transform = axis() === 'y' ? `translateY(${px}px)` : `translateX(${px}px)`;
+    el.style.transform = dragAxis === 'y' ? `translateY(${px}px)` : `translateX(${px}px)`;
   }
 
   function springBack() {
-    indexCols.style.transition = 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)';
+    el.style.transition = 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)';
     setOffset(0);
-    indexCols.addEventListener('transitionend', function onEnd() {
-      indexCols.style.transition = '';
-      indexCols.removeEventListener('transitionend', onEnd);
+    el.addEventListener('transitionend', function onEnd() {
+      el.style.transition = '';
+      el.removeEventListener('transitionend', onEnd);
     }, { once: true });
   }
 
-  indexCols.addEventListener('pointerdown', e => {
-    if (isScrollable()) return; // plenty of content — let native scroll handle it
+  el.addEventListener('pointerdown', e => {
+    const ax = axis();
+    if (!ax || isScrollable(ax)) return; // no scroll axis here, or plenty of content — let native scroll handle it
     dragging = true;
+    dragAxis = ax;
     pointerId = e.pointerId;
-    startPos = axis() === 'y' ? e.clientY : e.clientX;
-    indexCols.style.transition = 'none';
+    startPos = ax === 'y' ? e.clientY : e.clientX;
+    el.style.transition = 'none';
   });
 
-  indexCols.addEventListener('pointermove', e => {
+  el.addEventListener('pointermove', e => {
     if (!dragging || e.pointerId !== pointerId) return;
-    const pos = axis() === 'y' ? e.clientY : e.clientX;
+    const pos = dragAxis === 'y' ? e.clientY : e.clientX;
     setOffset((pos - startPos) * 0.4); // resistance, like pulling against a spring
   });
 
@@ -257,23 +270,29 @@ function setupIndexElasticBounce() {
     dragging = false;
     springBack();
   }
-  indexCols.addEventListener('pointerup', endDrag);
-  indexCols.addEventListener('pointercancel', endDrag);
-  indexCols.addEventListener('pointerleave', e => { if (dragging) endDrag(e); });
+  el.addEventListener('pointerup', endDrag);
+  el.addEventListener('pointercancel', endDrag);
+  el.addEventListener('pointerleave', e => { if (dragging) endDrag(e); });
 
-  // Trackpad/mouse wheel on desktop
+  // Trackpad/mouse wheel
   let wheelEndTimer = null;
-  indexCols.addEventListener('wheel', e => {
-    if (isScrollable()) return;
+  el.addEventListener('wheel', e => {
+    const ax = axis();
+    if (!ax || isScrollable(ax)) return;
     e.preventDefault();
-    const delta = axis() === 'y' ? e.deltaY : e.deltaX;
-    const current = (indexCols.style.transform.match(/-?\d+\.?\d*/) || [0])[0];
+    const delta = ax === 'y' ? e.deltaY : e.deltaX;
+    const current = (el.style.transform.match(/-?\d+\.?\d*/) || [0])[0];
     const next = Math.max(-50, Math.min(50, Number(current) - delta * 0.3));
-    indexCols.style.transition = 'none';
+    dragAxis = ax;
+    el.style.transition = 'none';
     setOffset(next);
     clearTimeout(wheelEndTimer);
     wheelEndTimer = setTimeout(springBack, 120);
   }, { passive: false });
+}
+
+function setupIndexElasticBounce() {
+  document.querySelectorAll('.project-col, .col-images').forEach(setupElasticBounce);
 }
 
 /* ─── Update UI ──────────────────────────────────────────────────── */
