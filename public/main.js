@@ -294,14 +294,18 @@ function setupElasticBounce(el, transformEl = el) {
   // pulled (via tanh) instead of clamping hard at a limit, so a long scroll
   // gesture reads as elastic rather than stuck against a wall.
   //
-  // Springs back quickly (HOLD_MS) regardless of how long the wheel keeps
-  // firing — trackpad inertia sends events for a while after the user has
-  // actually stopped scrolling, with no reliable way to tell that tail
-  // apart from genuine input, so it is not worth waiting on event silence.
+  // Even a single "click" of a wheel is often delivered as a short burst of
+  // several synthetic events (OS-level smooth-scroll expansion), each of
+  // which would otherwise re-extend a per-event timer — so resolving on
+  // event silence alone can still drag out a single short gesture.
+  // CAP_MS bounds the whole pull to a fixed window from its first event,
+  // no matter how many events arrive inside it.
   const MAX_PULL = 50;
   const HOLD_MS = 16;
+  const CAP_MS = 70;
   let wheelEndTimer = null;
   let rawAccum = 0;
+  let pullStart = 0;
 
   function endPull() {
     rawAccum = 0;
@@ -320,12 +324,15 @@ function setupElasticBounce(el, transformEl = el) {
       return; // real scroll room in this direction — let native scrolling happen
     }
     e.preventDefault();
+    const now = performance.now();
+    if (rawAccum === 0) pullStart = now;
     rawAccum -= delta * 0.3;
     dragAxis = ax;
     transformEl.style.transition = 'none';
     setOffset(MAX_PULL * Math.tanh(rawAccum / MAX_PULL));
     clearTimeout(wheelEndTimer);
-    wheelEndTimer = setTimeout(endPull, HOLD_MS);
+    const delay = Math.max(4, Math.min(HOLD_MS, CAP_MS - (now - pullStart)));
+    wheelEndTimer = setTimeout(endPull, delay);
   }, { passive: false });
 
   // Leaving the element immediately snaps it back rather than waiting for
