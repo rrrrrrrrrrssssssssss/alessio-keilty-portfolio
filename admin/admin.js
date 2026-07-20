@@ -6,6 +6,7 @@ let aboutData = { email: '', instagram: '', bio: '' };
 let selectedProjectIds = new Set();
 let selectedImageIds = new Set();
 let insertAtIndex = null; // null = append to end; number = insert before that index
+let isUploading = false;  // guard against concurrent uploads causing DB races
 
 /* ─── DOM refs ───────────────────────────────────────────── */
 const projectList     = document.getElementById('project-list');
@@ -371,8 +372,11 @@ async function resizeForUpload(file) {
 // Two-phase upload:
 //   Phase 1 — resize all files client-side + upload to Blob in parallel (fast)
 //   Phase 2 — single DB write to register all images at once (no race condition)
+// Local state is updated directly from the server response — no full reload —
+// so existing image order (from a prior reorder) is always preserved.
 async function uploadFiles(files, insertAt = null) {
-  if (!files.length || !activeId) return;
+  if (isUploading || !files.length || !activeId) return;
+  isUploading = true;
 
   const statusCard = document.createElement('div');
   statusCard.className = 'img-card';
@@ -383,50 +387,66 @@ async function uploadFiles(files, insertAt = null) {
   imageGrid.appendChild(statusCard);
   dropHint.classList.add('hidden');
 
-  // Phase 1a: resize all files concurrently (no network, CPU only)
-  const resized = await Promise.all(files.map(f => resizeForUpload(f)));
+  try {
+    // Phase 1a: resize all files concurrently (CPU only, no network)
+    const resized = await Promise.all(files.map(f => resizeForUpload(f)));
 
-  // Phase 1b: upload all resized files to Blob in parallel
-  let done = 0;
-  const uploaded = await Promise.all(resized.map(async (file) => {
-    const formData = new FormData();
-    formData.append('image', file);
-    try {
-      const res = await fetch('/api/upload-temp', { method: 'POST', body: formData });
-      if (!res.ok) throw new Error(`${res.status}`);
-      return await res.json(); // { filename, thumbFilename }
-    } catch {
-      return null;
-    } finally {
-      statusLabel.textContent = `Caricamento... ${++done}/${files.length}`;
+    // Phase 1b: upload all resized files to Blob in parallel
+    let done = 0;
+    const uploaded = await Promise.all(resized.map(async (file) => {
+      const formData = new FormData();
+      formData.append('image', file);
+      try {
+        const res = await fetch('/api/upload-temp', { method: 'POST', body: formData });
+        if (!res.ok) throw new Error(`${res.status}`);
+        return await res.json(); // { filename, thumbFilename }
+      } catch {
+        return null;
+      } finally {
+        statusLabel.textContent = `Caricamento... ${++done}/${files.length}`;
+      }
+    }));
+
+    // Promise.all preserves array order → uploaded[i] corresponds to files[i]
+    const toRegister = uploaded.filter(Boolean);
+    const failed = files.length - toRegister.length;
+
+    // Phase 2: single DB write
+    let registered = [];
+    if (toRegister.length > 0) {
+      statusLabel.textContent = 'Salvataggio...';
+      try {
+        const res = await fetch(`/api/projects/${activeId}/images/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ images: toRegister, insertAt })
+        });
+        if (res.ok) registered = await res.json();
+      } catch { /* images uploaded to Blob but not in DB — user must retry */ }
     }
-  }));
 
-  // Phase 2: single DB write — register all successfully uploaded images in order
-  // Promise.all preserves array order, so uploaded[i] corresponds to files[i].
-  const toRegister = uploaded.filter(Boolean);
-  const failed = files.length - toRegister.length;
-
-  if (toRegister.length > 0) {
-    statusLabel.textContent = 'Salvataggio...';
-    try {
-      await fetch(`/api/projects/${activeId}/images/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ images: toRegister, insertAt })
-      });
-    } catch {
-      // register failed — images are uploaded to Blob but not in DB; user must retry
+    // Update local state directly from register response, without re-fetching from
+    // server, so any reorder the user just did is not lost to a stale server read.
+    const p = projects.find(x => x.id === activeId);
+    if (p && registered.length > 0) {
+      if (insertAt !== null) {
+        const current = [...p.images];
+        const idx = Math.max(0, Math.min(insertAt, current.length));
+        current.splice(idx, 0, ...registered);
+        p.images = current;
+      } else {
+        p.images = [...p.images, ...registered];
+      }
+      renderImages(p.images);
+      renderProjectList();
     }
-  }
 
-  statusCard.remove();
-  await loadProjects();
-  const freshP = projects.find(x => x.id === activeId);
-  if (freshP) renderImages(freshP.images);
-
-  if (failed) {
-    alert(`${failed} immagine${failed === 1 ? '' : 'i'} non caricat${failed === 1 ? 'a' : 'e'} correttamente.`);
+    if (failed) {
+      alert(`${failed} immagine${failed === 1 ? '' : 'i'} non caricat${failed === 1 ? 'a' : 'e'} correttamente.`);
+    }
+  } finally {
+    statusCard.remove();
+    isUploading = false;
   }
 }
 
@@ -539,10 +559,11 @@ function bindEvents() {
     fTitle.select();
   });
 
-  // Save
+  // Save — manual button, Enter key, and autosave on blur
   saveBtn.addEventListener('click', saveProject);
   [fTitle, fClient, fYear, fDesc].forEach(el => {
     el.addEventListener('keydown', e => { if (e.key === 'Enter') saveProject(); });
+    el.addEventListener('blur', () => { if (activeId !== null) saveProject(); });
   });
 
   // Publish / unpublish
