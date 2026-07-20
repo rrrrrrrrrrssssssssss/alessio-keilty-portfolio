@@ -336,17 +336,22 @@ async function resizeForUpload(file) {
 
 async function uploadOne(file) {
   const resized = await resizeForUpload(file);
-  const formData = new FormData();
-  formData.append('images', resized);
-  const res = await fetch(`/api/projects/${activeId}/images`, {
-    method: 'POST',
-    body: formData
-  });
-  if (!res.ok) {
+  // Retry once on transient failure — Blob writes occasionally need a second attempt
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const formData = new FormData();
+    formData.append('images', resized);
+    const res = await fetch(`/api/projects/${activeId}/images`, {
+      method: 'POST',
+      body: formData
+    });
+    if (res.ok) return res.json();
     const err = await res.json().catch(() => ({}));
+    if (attempt === 0 && res.status >= 500) {
+      await new Promise(r => setTimeout(r, 1500));
+      continue;
+    }
     throw new Error(err.error || `Errore server ${res.status}`);
   }
-  return res.json();
 }
 
 // One request per file rather than one big batched request: keeps each
@@ -366,24 +371,19 @@ async function uploadFiles(files) {
 
   const p = projects.find(x => x.id === activeId);
   let done = 0, failed = 0;
-  const queue = [...files];
-  const CONCURRENCY = 3;
 
-  async function worker() {
-    while (queue.length) {
-      const file = queue.shift();
-      try {
-        const newImgs = await uploadOne(file);
-        if (p) p.images = [...p.images, ...newImgs];
-      } catch {
-        failed++;
-      }
-      done++;
-      status.textContent = `Caricamento... ${done}/${files.length}`;
+  // Sequential uploads (one at a time): concurrent uploads race on the same DB
+  // version and overwrite each other, causing lost images and wrong order.
+  for (const file of files) {
+    try {
+      const newImgs = await uploadOne(file);
+      if (p) p.images = [...p.images, ...newImgs];
+    } catch {
+      failed++;
     }
+    done++;
+    status.textContent = `Caricamento... ${done}/${files.length}`;
   }
-
-  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
 
   placeholder.remove();
   if (p) {
