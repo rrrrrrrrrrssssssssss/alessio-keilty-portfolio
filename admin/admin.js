@@ -119,6 +119,8 @@ async function selectProject(id) {
     if (!proceed) return;
   }
   isDirty = false;
+  saveStatus.textContent = '';
+  saveStatus.classList.remove('is-dirty');
   activeId = id;
   const p = projects.find(x => x.id === id);
   if (!p) return;
@@ -231,6 +233,8 @@ async function saveCurrentProject() {
 
 function markDirty() {
   isDirty = true;
+  saveStatus.textContent = '● non salvato';
+  saveStatus.classList.add('is-dirty');
 }
 
 // Returns a Promise that resolves to true (proceed) or false (cancel).
@@ -303,8 +307,16 @@ async function toggleProjectPublished() {
 }
 
 function flashStatus(msg) {
+  saveStatus.classList.remove('is-dirty');
   saveStatus.textContent = msg;
-  setTimeout(() => { saveStatus.textContent = ''; }, 2000);
+  setTimeout(() => {
+    if (isDirty) {
+      saveStatus.textContent = '● non salvato';
+      saveStatus.classList.add('is-dirty');
+    } else {
+      saveStatus.textContent = '';
+    }
+  }, 2000);
 }
 
 /* ─── Images ─────────────────────────────────────────────── */
