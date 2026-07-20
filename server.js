@@ -241,6 +241,46 @@ app.put('/api/projects/reorder', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// Full state save: atomically replaces metadata + images in one write.
+// Assigns real IDs to any images with negative (client-temp) IDs.
+// Cleans up Blob files for images removed from the list, and for any
+// temp blobs the client deleted before saving (passed as filesToDelete).
+app.put('/api/projects/:id/state', wrap(async (req, res) => {
+  const db  = await readDB();
+  const pid = parseInt(req.params.id);
+  const p   = db.projects.find(x => x.id === pid);
+  if (!p) return res.status(404).json({ error: 'Not found' });
+
+  const { title, client, year, description, published, images, filesToDelete = [] } = req.body;
+  if (title       !== undefined) p.title       = title;
+  if (client      !== undefined) p.client      = client;
+  if (year        !== undefined) p.year        = year;
+  if (description !== undefined) p.description = description;
+  if (published   !== undefined) p.published   = published;
+
+  if (images !== undefined) {
+    const newFilenames = new Set(images.flatMap(img => [img.filename, img.thumbFilename].filter(Boolean)));
+    const removedImgs  = p.images.filter(img => !newFilenames.has(img.filename) && !newFilenames.has(img.thumbFilename));
+
+    const allImgIds = db.projects.flatMap(x => x.images.map(i => i.id)).filter(id => id > 0);
+    let nextId = (allImgIds.length === 0 ? 0 : Math.max(...allImgIds)) + 1;
+
+    p.images = images.map((img, i) => {
+      const id = (img.id && img.id > 0) ? img.id : nextId++;
+      const out = { id, filename: img.filename, thumbFilename: img.thumbFilename, sort_order: i };
+      if (img.year)        out.year        = img.year;
+      if (img.description) out.description = img.description;
+      return out;
+    });
+
+    const toDelete = [...removedImgs.map(i => i.filename), ...removedImgs.map(i => i.thumbFilename), ...filesToDelete];
+    Promise.all(toDelete.filter(Boolean).map(deleteImageFile)).catch(() => {});
+  }
+
+  await writeDB(db);
+  res.json(p);
+}));
+
 app.put('/api/projects/:id', wrap(async (req, res) => {
   const db = await readDB();
   const p  = db.projects.find(x => x.id === parseInt(req.params.id));

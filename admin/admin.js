@@ -5,9 +5,12 @@ let imageSortable = null;
 let aboutData = { email: '', instagram: '', bio: '' };
 let selectedProjectIds = new Set();
 let selectedImageIds = new Set();
-let insertAtIndex = null; // null = append to end; number = insert before that index
-let isUploading = false;    // guard against concurrent uploads causing DB races
-let autosaveTimer = null;  // debounce timer for while-typing autosave
+let insertAtIndex = null;     // null = append to end; number = insert before that index
+let isUploading = false;      // guard against concurrent upload calls
+let isDirty = false;          // unsaved local changes exist
+let saveTimer = null;         // debounce timer for auto-save
+let nextTempId = -1;          // temporary negative IDs for locally-added images
+let pendingBlobDeletes = [];  // filenames to clean up on next save (temp images deleted locally)
 
 /* ─── DOM refs ───────────────────────────────────────────── */
 const projectList     = document.getElementById('project-list');
@@ -109,7 +112,12 @@ function updateProjectBulkBar() {
   projectBulkCount.textContent = `${n} selezionat${n === 1 ? 'o' : 'i'}`;
 }
 
-function selectProject(id) {
+async function selectProject(id) {
+  if (isDirty && activeId !== null && activeId !== id) {
+    clearTimeout(saveTimer);
+    await saveCurrentProject();
+  }
+  isDirty = false;
   activeId = id;
   const p = projects.find(x => x.id === id);
   if (!p) return;
@@ -137,7 +145,11 @@ function selectProject(id) {
 }
 
 /* ─── About editor ───────────────────────────────────────── */
-function openAboutEditor() {
+async function openAboutEditor() {
+  if (isDirty && activeId !== null) {
+    clearTimeout(saveTimer);
+    await saveCurrentProject();
+  }
   activeId = null;
   document.querySelectorAll('.project-item').forEach(el => el.classList.remove('active'));
   editorForm.hidden  = true;
@@ -168,23 +180,57 @@ async function saveAbout() {
 }
 
 /* ─── Save project ───────────────────────────────────────── */
-async function saveProject() {
+// Sends the complete project state (metadata + all images) in one atomic write,
+// eliminating all per-operation race conditions on the server-side DB.
+async function saveCurrentProject() {
+  if (!activeId) return;
+  const p = projects.find(x => x.id === activeId);
+  if (!p) return;
+  clearTimeout(saveTimer);
+  saveTimer = null;
+
   const body = {
     title:       fTitle.value.trim(),
     client:      fClient.value.trim(),
     year:        fYear.value.trim(),
-    description: fDesc.value.trim()
+    description: fDesc.value.trim(),
+    images: p.images.map((img, i) => ({
+      id:            img.id,
+      filename:      img.filename,
+      thumbFilename: img.thumbFilename,
+      sort_order:    i,
+      year:          img.year        || '',
+      description:   img.description || ''
+    })),
+    filesToDelete: pendingBlobDeletes.filter(Boolean)
   };
-  const res = await fetch(`/api/projects/${activeId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  const updated = await res.json();
-  projects = projects.map(p => p.id === activeId ? { ...updated, images: p.images } : p);
-  formTitle.textContent = updated.title || updated.client || '(senza titolo)';
-  renderProjectList();
-  flashStatus('Salvato ✓');
+  pendingBlobDeletes = [];
+
+  flashStatus('Salvataggio...');
+  try {
+    const res = await fetch(`/api/projects/${activeId}/state`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(`${res.status}`);
+    const updated = await res.json();
+    projects = projects.map(pr => pr.id === activeId ? updated : pr);
+    const freshP = projects.find(x => x.id === activeId);
+    if (freshP) renderImages(freshP.images);
+    formTitle.textContent = updated.title || updated.client || '(senza titolo)';
+    renderProjectList();
+    isDirty = false;
+    flashStatus('Salvato ✓');
+  } catch {
+    flashStatus('Errore salvataggio — riprova');
+  }
+}
+
+function scheduleSave() {
+  isDirty = true;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveCurrentProject, 3000);
 }
 
 function updatePublishButton(p) {
@@ -273,23 +319,17 @@ function renderImages(images) {
     chosenClass: 'sortable-chosen',
     filter: '.img-field-year, .img-field-desc',
     preventOnFilter: false,
-    onEnd: async () => {
+    onEnd: () => {
       const cards = Array.from(imageGrid.querySelectorAll('.img-card-wrap'));
       const order = cards.map((el, i) => ({ id: parseInt(el.dataset.id), sort_order: i }));
-      // Update numbers visually
       cards.forEach((card, i) => {
         card.querySelector('.img-card-num').textContent = String(i + 1).padStart(2, '0');
       });
-      await fetch('/api/images/reorder', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order })
-      });
-      // Sync local state
       const p = projects.find(x => x.id === activeId);
       if (p) {
         p.images = order.map(o => p.images.find(img => img.id === o.id)).filter(Boolean);
       }
+      scheduleSave();
     }
   });
 }
@@ -370,11 +410,10 @@ async function resizeForUpload(file) {
   return new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
 }
 
-// Two-phase upload:
-//   Phase 1 — resize all files client-side + upload to Blob in parallel (fast)
-//   Phase 2 — single DB write to register all images at once (no race condition)
-// Local state is updated directly from the server response — no full reload —
-// so existing image order (from a prior reorder) is always preserved.
+// Upload flow: resize + upload files to Blob in parallel (fast), then add to
+// local state with temporary IDs. The DB write is deferred to the next save
+// (automatic after 3 s, or manual) so there is always exactly one atomic write
+// regardless of how many images are uploaded or how many other edits are pending.
 async function uploadFiles(files, insertAt = null) {
   if (isUploading || !files.length || !activeId) return;
   isUploading = true;
@@ -389,23 +428,10 @@ async function uploadFiles(files, insertAt = null) {
   dropHint.classList.add('hidden');
 
   try {
-    // Save any unsaved text changes before touching images.
-    // Drag-and-drop from outside the browser does not always trigger blur on focused fields.
-    const pBefore = projects.find(x => x.id === activeId);
-    if (pBefore && (
-      fTitle.value.trim() !== (pBefore.title || '') ||
-      fClient.value.trim() !== (pBefore.client || '') ||
-      fYear.value.trim() !== (pBefore.year || '') ||
-      fDesc.value.trim() !== (pBefore.description || '')
-    )) {
-      clearTimeout(autosaveTimer);
-      await saveProject();
-    }
-
-    // Phase 1a: resize all files concurrently (CPU only, no network)
+    // Resize all files concurrently (CPU only, no network)
     const resized = await Promise.all(files.map(f => resizeForUpload(f)));
 
-    // Phase 1b: upload all resized files to Blob in parallel
+    // Upload all resized files to Blob in parallel
     let done = 0;
     const uploaded = await Promise.all(resized.map(async (file) => {
       const formData = new FormData();
@@ -421,38 +447,30 @@ async function uploadFiles(files, insertAt = null) {
       }
     }));
 
-    // Promise.all preserves array order → uploaded[i] corresponds to files[i]
-    const toRegister = uploaded.filter(Boolean);
-    const failed = files.length - toRegister.length;
+    const toAdd  = uploaded.filter(Boolean);
+    const failed = files.length - toAdd.length;
 
-    // Phase 2: single DB write
-    let registered = [];
-    if (toRegister.length > 0) {
-      statusLabel.textContent = 'Salvataggio...';
-      try {
-        const res = await fetch(`/api/projects/${activeId}/images/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ images: toRegister, insertAt })
-        });
-        if (res.ok) registered = await res.json();
-      } catch { /* images uploaded to Blob but not in DB — user must retry */ }
-    }
-
-    // Update local state directly from register response, without re-fetching from
-    // server, so any reorder the user just did is not lost to a stale server read.
+    // Add to local state with temporary negative IDs — DB write happens on next save
     const p = projects.find(x => x.id === activeId);
-    if (p && registered.length > 0) {
+    if (p && toAdd.length > 0) {
+      const newImages = toAdd.map(img => ({
+        id:            nextTempId--,
+        filename:      img.filename,
+        thumbFilename: img.thumbFilename
+      }));
+
       if (insertAt !== null) {
         const current = [...p.images];
         const idx = Math.max(0, Math.min(insertAt, current.length));
-        current.splice(idx, 0, ...registered);
+        current.splice(idx, 0, ...newImages);
         p.images = current;
       } else {
-        p.images = [...p.images, ...registered];
+        p.images = [...p.images, ...newImages];
       }
+
       renderImages(p.images);
       renderProjectList();
+      scheduleSave();
     }
 
     if (failed) {
@@ -464,44 +482,46 @@ async function uploadFiles(files, insertAt = null) {
   }
 }
 
-async function saveImageField(imgId, field, value) {
-  const res = await fetch(`/api/images/${imgId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ [field]: value })
-  });
-  const updated = await res.json();
-  const p = projects.find(x => x.id === activeId);
+function saveImageField(imgId, field, value) {
+  const p   = projects.find(x => x.id === activeId);
   const img = p && p.images.find(i => i.id === imgId);
-  if (img) img[field] = updated[field];
-}
-
-async function deleteImage(imgId) {
-  await fetch(`/api/images/${imgId}`, { method: 'DELETE' });
-  selectedImageIds.delete(imgId);
-  const p = projects.find(x => x.id === activeId);
-  if (p) {
-    p.images = p.images.filter(i => i.id !== imgId);
-    renderImages(p.images);
-    renderProjectList();
+  if (img) {
+    img[field] = value;
+    scheduleSave();
   }
 }
 
-async function deleteSelectedImages() {
+function deleteImage(imgId) {
+  const p = projects.find(x => x.id === activeId);
+  if (!p) return;
+  if (imgId < 0) {
+    // Temp image not yet in DB — track its blobs for cleanup on next save
+    const img = p.images.find(i => i.id === imgId);
+    if (img) pendingBlobDeletes.push(img.filename, img.thumbFilename);
+  }
+  selectedImageIds.delete(imgId);
+  p.images = p.images.filter(i => i.id !== imgId);
+  renderImages(p.images);
+  renderProjectList();
+  scheduleSave();
+}
+
+function deleteSelectedImages() {
   const ids = Array.from(selectedImageIds);
   if (!ids.length) return;
-  await fetch('/api/images', {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ids })
-  });
-  selectedImageIds.clear();
   const p = projects.find(x => x.id === activeId);
-  if (p) {
-    p.images = p.images.filter(i => !ids.includes(i.id));
-    renderImages(p.images);
-    renderProjectList();
-  }
+  if (!p) return;
+  ids.forEach(imgId => {
+    if (imgId < 0) {
+      const img = p.images.find(i => i.id === imgId);
+      if (img) pendingBlobDeletes.push(img.filename, img.thumbFilename);
+    }
+  });
+  p.images = p.images.filter(i => !ids.includes(i.id));
+  selectedImageIds.clear();
+  renderImages(p.images);
+  renderProjectList();
+  scheduleSave();
 }
 
 async function deleteSelectedProjects() {
@@ -568,23 +588,17 @@ function bindEvents() {
     const p = await res.json();
     projects.push(p);
     renderProjectList();
-    selectProject(p.id);
+    await selectProject(p.id);
     fTitle.focus();
     fTitle.select();
   });
 
   // Save — manual button, Enter, autosave while typing (debounced) and on blur
-  saveBtn.addEventListener('click', saveProject);
+  saveBtn.addEventListener('click', saveCurrentProject);
   [fTitle, fClient, fYear, fDesc].forEach(el => {
-    el.addEventListener('keydown', e => { if (e.key === 'Enter') saveProject(); });
-    el.addEventListener('input', () => {
-      clearTimeout(autosaveTimer);
-      autosaveTimer = setTimeout(() => { if (activeId !== null) saveProject(); }, 800);
-    });
-    el.addEventListener('blur', () => {
-      clearTimeout(autosaveTimer);
-      if (activeId !== null) saveProject();
-    });
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') saveCurrentProject(); });
+    el.addEventListener('input', scheduleSave);
+    el.addEventListener('blur', () => { if (activeId !== null) saveCurrentProject(); });
   });
 
   // Publish / unpublish
