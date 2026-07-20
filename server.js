@@ -30,6 +30,7 @@ const DB_PATH = path.join(BASE, 'data.json');
 // to skip the list() call on every request.
 let dbCache = null;
 let blobUrl = null;
+let dbCacheWrittenAt = 0; // timestamp of the last writeDB call on this instance
 
 function readLocalDB() {
   if (!fs.existsSync(DB_PATH)) return { projects: [] };
@@ -39,14 +40,21 @@ function readLocalDB() {
 
 async function readDB() {
   if (!USE_BLOB) {
-    // Local dev: single process, memory is always current
+    // Local dev: single persistent process — memory is always current
     if (dbCache) return dbCache;
     dbCache = readLocalDB();
     return dbCache;
   }
 
-  // Blob mode: always fetch fresh — warm serverless instances must not serve stale cache.
-  // Cache-Control/Pragma headers instruct Vercel Blob CDN to skip the edge cache.
+  // Blob mode: if this instance wrote the DB recently, trust its in-memory cache.
+  // This avoids stale CDN reads for sequential operations on the same warm instance
+  // (which is the common case for a single admin session). Cross-instance reads
+  // still go to Blob once the 30-second window expires.
+  if (dbCache && Date.now() - dbCacheWrittenAt < 30000) {
+    return dbCache;
+  }
+
+  // Cache cold or stale: fetch fresh from Blob with CDN cache bypass headers.
   if (!blobUrl) {
     const { blobs } = await list({ prefix: 'db/data.json' });
     if (blobs.length === 0) {
@@ -67,7 +75,8 @@ async function readDB() {
 }
 
 async function writeDB(data) {
-  dbCache = data; // update memory so subsequent reads within the same invocation are consistent
+  dbCache = data;
+  dbCacheWrittenAt = Date.now(); // record when this instance last wrote, for cache trust window
 
   if (!USE_BLOB) {
     fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf8');

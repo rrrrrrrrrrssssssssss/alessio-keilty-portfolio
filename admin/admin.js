@@ -6,7 +6,8 @@ let aboutData = { email: '', instagram: '', bio: '' };
 let selectedProjectIds = new Set();
 let selectedImageIds = new Set();
 let insertAtIndex = null; // null = append to end; number = insert before that index
-let isUploading = false;  // guard against concurrent uploads causing DB races
+let isUploading = false;    // guard against concurrent uploads causing DB races
+let autosaveTimer = null;  // debounce timer for while-typing autosave
 
 /* ─── DOM refs ───────────────────────────────────────────── */
 const projectList     = document.getElementById('project-list');
@@ -388,6 +389,19 @@ async function uploadFiles(files, insertAt = null) {
   dropHint.classList.add('hidden');
 
   try {
+    // Save any unsaved text changes before touching images.
+    // Drag-and-drop from outside the browser does not always trigger blur on focused fields.
+    const pBefore = projects.find(x => x.id === activeId);
+    if (pBefore && (
+      fTitle.value.trim() !== (pBefore.title || '') ||
+      fClient.value.trim() !== (pBefore.client || '') ||
+      fYear.value.trim() !== (pBefore.year || '') ||
+      fDesc.value.trim() !== (pBefore.description || '')
+    )) {
+      clearTimeout(autosaveTimer);
+      await saveProject();
+    }
+
     // Phase 1a: resize all files concurrently (CPU only, no network)
     const resized = await Promise.all(files.map(f => resizeForUpload(f)));
 
@@ -559,11 +573,18 @@ function bindEvents() {
     fTitle.select();
   });
 
-  // Save — manual button, Enter key, and autosave on blur
+  // Save — manual button, Enter, autosave while typing (debounced) and on blur
   saveBtn.addEventListener('click', saveProject);
   [fTitle, fClient, fYear, fDesc].forEach(el => {
     el.addEventListener('keydown', e => { if (e.key === 'Enter') saveProject(); });
-    el.addEventListener('blur', () => { if (activeId !== null) saveProject(); });
+    el.addEventListener('input', () => {
+      clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(() => { if (activeId !== null) saveProject(); }, 800);
+    });
+    el.addEventListener('blur', () => {
+      clearTimeout(autosaveTimer);
+      if (activeId !== null) saveProject();
+    });
   });
 
   // Publish / unpublish
