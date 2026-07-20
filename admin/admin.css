@@ -531,6 +531,15 @@ textarea:focus { border-color: var(--accent); }
 .sortable-ghost { opacity: 0.3; }
 .sortable-chosen { cursor: grabbing !important; }
 
+/* ─── Drag-to-position placeholder ───────────────────── */
+.drop-placeholder {
+  aspect-ratio: 1;
+  border: 2px dashed var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
 /* ─── Mobile back button (hidden on desktop) ──────────── */
 #mobile-back-btn { display: none; }
 

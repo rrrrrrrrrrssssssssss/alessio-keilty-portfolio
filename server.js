@@ -45,7 +45,8 @@ async function readDB() {
     return dbCache;
   }
 
-  // Blob mode: always fetch fresh — warm serverless instances must not serve stale cache
+  // Blob mode: always fetch fresh — warm serverless instances must not serve stale cache.
+  // Cache-Control/Pragma headers instruct Vercel Blob CDN to skip the edge cache.
   if (!blobUrl) {
     const { blobs } = await list({ prefix: 'db/data.json' });
     if (blobs.length === 0) {
@@ -57,7 +58,9 @@ async function readDB() {
     blobUrl = blobs[0].url;
   }
 
-  const res = await fetch(blobUrl + '?t=' + Date.now());
+  const res = await fetch(blobUrl + '?t=' + Date.now(), {
+    headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+  });
   if (!res.ok) throw new Error(`readDB: blob fetch failed (${res.status})`);
   dbCache = await res.json();
   return dbCache;
@@ -161,6 +164,9 @@ const upload = multer({
 // ─── Static ───────────────────────────────────────────────────────────────────
 if (!USE_BLOB) fs.mkdirSync(UPLOADS, { recursive: true });
 app.use(express.json());
+// Prevent browsers and Vercel edge from caching API responses so changes
+// made in the admin are always visible immediately on the public site.
+app.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 app.use('/uploads', express.static(UPLOADS));
 app.use('/fonts',   express.static(path.join(BASE, 'Font')));
 app.use(express.static(path.join(BASE, 'public')));
@@ -272,9 +278,8 @@ app.post('/api/projects/:id/images', upload.array('images', 200), wrap(async (re
 
   const allImgIds = db.projects.flatMap(x => x.images.map(i => i.id));
   const nextImgId = (allImgIds.length === 0 ? 0 : Math.max(...allImgIds)) + 1;
-  const nextOrder = p.images.reduce((m, i) => Math.max(m, i.sort_order ?? 0), -1) + 1;
 
-  const inserted = await Promise.all(req.files.map(async (f, i) => {
+  const newImages = await Promise.all(req.files.map(async (f, i) => {
     const [optimized, thumb] = await Promise.all([
       optimizeImage(f.buffer),
       makeThumb(f.buffer)
@@ -283,13 +288,26 @@ app.post('/api/projects/:id/images', upload.array('images', 200), wrap(async (re
       storeImageBuffer(optimized),
       storeImageBuffer(thumb)
     ]);
-
-    return { id: nextImgId + i, filename, thumbFilename, sort_order: nextOrder + i };
+    return { id: nextImgId + i, filename, thumbFilename };
   }));
 
-  p.images.push(...inserted);
+  // insertAt: insert before index N in sorted order, then re-number all sort_orders.
+  // Without insertAt, append to end (legacy behaviour).
+  const insertAt = req.query.insertAt !== undefined ? parseInt(req.query.insertAt) : null;
+  if (insertAt !== null) {
+    const sorted = [...p.images].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    const idx = Math.max(0, Math.min(insertAt, sorted.length));
+    sorted.splice(idx, 0, ...newImages);
+    sorted.forEach((img, i) => { img.sort_order = i; });
+    p.images = sorted;
+  } else {
+    const nextOrder = p.images.reduce((m, i) => Math.max(m, i.sort_order ?? 0), -1) + 1;
+    newImages.forEach((img, i) => { img.sort_order = nextOrder + i; });
+    p.images.push(...newImages);
+  }
+
   await writeDB(db);
-  res.json(inserted);
+  res.json(newImages);
 }));
 
 app.put('/api/images/reorder', wrap(async (req, res) => {

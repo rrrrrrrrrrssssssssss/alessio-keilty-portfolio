@@ -5,6 +5,7 @@ let imageSortable = null;
 let aboutData = { email: '', instagram: '', bio: '' };
 let selectedProjectIds = new Set();
 let selectedImageIds = new Set();
+let insertAtIndex = null; // null = append to end; number = insert before that index
 
 /* ─── DOM refs ───────────────────────────────────────────── */
 const projectList     = document.getElementById('project-list');
@@ -291,6 +292,39 @@ function renderImages(images) {
   });
 }
 
+/* ─── Drag-to-position helpers ───────────────────────────── */
+// Returns the index before which new files should be inserted, based on
+// where the cursor is relative to the existing card centers.
+function getInsertIndex(e, cards) {
+  const x = e.clientX, y = e.clientY;
+  for (let i = 0; i < cards.length; i++) {
+    const r = cards[i].getBoundingClientRect();
+    if (y < r.top + r.height / 2 || (y <= r.bottom && x < r.left + r.width / 2)) return i;
+  }
+  return cards.length;
+}
+
+function updateDropPlaceholder(idx) {
+  const old = imageGrid.querySelector('.drop-placeholder');
+  if (old) old.remove();
+  const cards = Array.from(imageGrid.querySelectorAll('.img-card-wrap'));
+  const ph = document.createElement('div');
+  ph.className = 'drop-placeholder';
+  if (idx === 0 || cards.length === 0) {
+    imageGrid.prepend(ph);
+  } else if (idx >= cards.length) {
+    imageGrid.append(ph);
+  } else {
+    imageGrid.insertBefore(ph, cards[idx]);
+  }
+}
+
+function clearDropState() {
+  insertAtIndex = null;
+  const ph = imageGrid.querySelector('.drop-placeholder');
+  if (ph) ph.remove();
+}
+
 function updateImageBulkBar() {
   const n = selectedImageIds.size;
   imageBulkDelete.hidden = n === 0;
@@ -334,16 +368,15 @@ async function resizeForUpload(file) {
   return new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
 }
 
-async function uploadOne(file) {
+async function uploadOne(file, insertAt = null) {
   const resized = await resizeForUpload(file);
+  const base = `/api/projects/${activeId}/images`;
+  const url = insertAt !== null ? `${base}?insertAt=${insertAt}` : base;
   // Retry once on transient failure — Blob writes occasionally need a second attempt
   for (let attempt = 0; attempt < 2; attempt++) {
     const formData = new FormData();
     formData.append('images', resized);
-    const res = await fetch(`/api/projects/${activeId}/images`, {
-      method: 'POST',
-      body: formData
-    });
+    const res = await fetch(url, { method: 'POST', body: formData });
     if (res.ok) return res.json();
     const err = await res.json().catch(() => ({}));
     if (attempt === 0 && res.status >= 500) {
@@ -354,42 +387,44 @@ async function uploadOne(file) {
   }
 }
 
-// One request per file rather than one big batched request: keeps each
-// request small regardless of how many files are selected at once, and
-// means a single bad file does not take the whole batch down with it.
-async function uploadFiles(files) {
+// One request per file, sequential: prevents concurrent DB writes from racing
+// and overwriting each other (which caused lost images and wrong order).
+// insertAt: if set, files are inserted before that index in the sorted list,
+// and the server re-numbers all sort_orders; each successive file shifts by 1.
+async function uploadFiles(files, insertAt = null) {
   if (!files.length || !activeId) return;
 
-  const placeholder = document.createElement('div');
-  placeholder.className = 'img-card';
-  const status = document.createElement('div');
-  status.className = 'img-uploading';
-  status.textContent = `Caricamento... 0/${files.length}`;
-  placeholder.appendChild(status);
-  imageGrid.appendChild(placeholder);
+  const statusCard = document.createElement('div');
+  statusCard.className = 'img-card';
+  const statusLabel = document.createElement('div');
+  statusLabel.className = 'img-uploading';
+  statusLabel.textContent = `Caricamento... 0/${files.length}`;
+  statusCard.appendChild(statusLabel);
+  imageGrid.appendChild(statusCard);
   dropHint.classList.add('hidden');
 
-  const p = projects.find(x => x.id === activeId);
   let done = 0, failed = 0;
+  let currentInsert = insertAt;
 
-  // Sequential uploads (one at a time): concurrent uploads race on the same DB
-  // version and overwrite each other, causing lost images and wrong order.
   for (const file of files) {
     try {
-      const newImgs = await uploadOne(file);
-      if (p) p.images = [...p.images, ...newImgs];
+      await uploadOne(file, currentInsert);
+      if (currentInsert !== null) currentInsert++;
     } catch {
       failed++;
     }
     done++;
-    status.textContent = `Caricamento... ${done}/${files.length}`;
+    statusLabel.textContent = `Caricamento... ${done}/${files.length}`;
   }
 
-  placeholder.remove();
-  if (p) {
-    renderImages(p.images);
-    renderProjectList();
-  }
+  statusCard.remove();
+
+  // Re-load from server so the grid reflects the exact order stored on the server,
+  // especially important when inserting at a specific position.
+  await loadProjects();
+  const freshP = projects.find(x => x.id === activeId);
+  if (freshP) renderImages(freshP.images);
+
   if (failed) {
     alert(`${failed} immagine${failed === 1 ? '' : 'i'} non caricat${failed === 1 ? 'a' : 'e'} correttamente.`);
   }
@@ -559,17 +594,40 @@ function bindEvents() {
     fileInput.value = '';
   });
 
-  // Drag-and-drop files onto drop zone
+  // Drag-and-drop files onto drop zone, with position-aware insertion.
+  // When dragging over the image grid, a placeholder shows exactly where
+  // the files will land; dropping outside the grid appends to the end.
   dropZone.addEventListener('dragover', e => {
+    if (!e.dataTransfer.types.includes('Files')) return;
     e.preventDefault();
     dropZone.classList.add('drag-over');
+
+    const overGrid = imageGrid === e.target || imageGrid.contains(e.target);
+    if (overGrid) {
+      const cards = Array.from(imageGrid.querySelectorAll('.img-card-wrap'));
+      const newIdx = cards.length === 0 ? 0 : getInsertIndex(e, cards);
+      if (newIdx !== insertAtIndex) {
+        insertAtIndex = newIdx;
+        updateDropPlaceholder(newIdx);
+      }
+    } else {
+      if (insertAtIndex !== null) clearDropState();
+    }
   });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+
+  dropZone.addEventListener('dragleave', e => {
+    if (dropZone.contains(e.relatedTarget)) return;
+    dropZone.classList.remove('drag-over');
+    clearDropState();
+  });
+
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
     const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-    uploadFiles(files);
+    const idx = insertAtIndex;
+    clearDropState();
+    uploadFiles(files, idx);
   });
 }
 
