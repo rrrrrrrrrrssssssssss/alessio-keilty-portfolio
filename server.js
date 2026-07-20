@@ -270,6 +270,58 @@ app.delete('/api/projects', wrap(async (req, res) => {
 }));
 
 // ─── Images API ───────────────────────────────────────────────────────────────
+// Two-phase upload to allow parallel file transfers with a single atomic DB write:
+//   1. POST /api/upload-temp  — upload one image to Blob, return {filename, thumbFilename}
+//   2. POST /api/projects/:id/images/register — insert pre-uploaded images into DB in one write
+// This avoids the race condition of per-file DB reads/writes and removes the main bottleneck.
+
+app.post('/api/upload-temp', upload.single('image'), wrap(async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+  const [optimized, thumb] = await Promise.all([
+    optimizeImage(req.file.buffer),
+    makeThumb(req.file.buffer)
+  ]);
+  const [filename, thumbFilename] = await Promise.all([
+    storeImageBuffer(optimized),
+    storeImageBuffer(thumb)
+  ]);
+  res.json({ filename, thumbFilename });
+}));
+
+app.post('/api/projects/:id/images/register', wrap(async (req, res) => {
+  const db  = await readDB();
+  const pid = parseInt(req.params.id);
+  const p   = db.projects.find(x => x.id === pid);
+  if (!p) return res.status(404).json({ error: 'Not found' });
+
+  const { images = [], insertAt = null } = req.body;
+  if (!images.length) return res.json([]);
+
+  const allImgIds = db.projects.flatMap(x => x.images.map(i => i.id));
+  const nextImgId = (allImgIds.length === 0 ? 0 : Math.max(...allImgIds)) + 1;
+
+  const newImages = images.map((img, i) => ({
+    id: nextImgId + i,
+    filename: img.filename,
+    thumbFilename: img.thumbFilename
+  }));
+
+  if (insertAt !== null) {
+    const sorted = [...p.images].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    const idx = Math.max(0, Math.min(insertAt, sorted.length));
+    sorted.splice(idx, 0, ...newImages);
+    sorted.forEach((img, i) => { img.sort_order = i; });
+    p.images = sorted;
+  } else {
+    const nextOrder = p.images.reduce((m, i) => Math.max(m, i.sort_order ?? 0), -1) + 1;
+    newImages.forEach((img, i) => { img.sort_order = nextOrder + i; });
+    p.images.push(...newImages);
+  }
+
+  await writeDB(db);
+  res.json(newImages);
+}));
+
 app.post('/api/projects/:id/images', upload.array('images', 200), wrap(async (req, res) => {
   const db  = await readDB();
   const pid = parseInt(req.params.id);

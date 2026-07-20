@@ -368,29 +368,9 @@ async function resizeForUpload(file) {
   return new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
 }
 
-async function uploadOne(file, insertAt = null) {
-  const resized = await resizeForUpload(file);
-  const base = `/api/projects/${activeId}/images`;
-  const url = insertAt !== null ? `${base}?insertAt=${insertAt}` : base;
-  // Retry once on transient failure — Blob writes occasionally need a second attempt
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const formData = new FormData();
-    formData.append('images', resized);
-    const res = await fetch(url, { method: 'POST', body: formData });
-    if (res.ok) return res.json();
-    const err = await res.json().catch(() => ({}));
-    if (attempt === 0 && res.status >= 500) {
-      await new Promise(r => setTimeout(r, 1500));
-      continue;
-    }
-    throw new Error(err.error || `Errore server ${res.status}`);
-  }
-}
-
-// One request per file, sequential: prevents concurrent DB writes from racing
-// and overwriting each other (which caused lost images and wrong order).
-// insertAt: if set, files are inserted before that index in the sorted list,
-// and the server re-numbers all sort_orders; each successive file shifts by 1.
+// Two-phase upload:
+//   Phase 1 — resize all files client-side + upload to Blob in parallel (fast)
+//   Phase 2 — single DB write to register all images at once (no race condition)
 async function uploadFiles(files, insertAt = null) {
   if (!files.length || !activeId) return;
 
@@ -398,29 +378,49 @@ async function uploadFiles(files, insertAt = null) {
   statusCard.className = 'img-card';
   const statusLabel = document.createElement('div');
   statusLabel.className = 'img-uploading';
-  statusLabel.textContent = `Caricamento... 0/${files.length}`;
+  statusLabel.textContent = 'Ottimizzazione...';
   statusCard.appendChild(statusLabel);
   imageGrid.appendChild(statusCard);
   dropHint.classList.add('hidden');
 
-  let done = 0, failed = 0;
-  let currentInsert = insertAt;
+  // Phase 1a: resize all files concurrently (no network, CPU only)
+  const resized = await Promise.all(files.map(f => resizeForUpload(f)));
 
-  for (const file of files) {
+  // Phase 1b: upload all resized files to Blob in parallel
+  let done = 0;
+  const uploaded = await Promise.all(resized.map(async (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
     try {
-      await uploadOne(file, currentInsert);
-      if (currentInsert !== null) currentInsert++;
+      const res = await fetch('/api/upload-temp', { method: 'POST', body: formData });
+      if (!res.ok) throw new Error(`${res.status}`);
+      return await res.json(); // { filename, thumbFilename }
     } catch {
-      failed++;
+      return null;
+    } finally {
+      statusLabel.textContent = `Caricamento... ${++done}/${files.length}`;
     }
-    done++;
-    statusLabel.textContent = `Caricamento... ${done}/${files.length}`;
+  }));
+
+  // Phase 2: single DB write — register all successfully uploaded images in order
+  // Promise.all preserves array order, so uploaded[i] corresponds to files[i].
+  const toRegister = uploaded.filter(Boolean);
+  const failed = files.length - toRegister.length;
+
+  if (toRegister.length > 0) {
+    statusLabel.textContent = 'Salvataggio...';
+    try {
+      await fetch(`/api/projects/${activeId}/images/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ images: toRegister, insertAt })
+      });
+    } catch {
+      // register failed — images are uploaded to Blob but not in DB; user must retry
+    }
   }
 
   statusCard.remove();
-
-  // Re-load from server so the grid reflects the exact order stored on the server,
-  // especially important when inserting at a specific position.
   await loadProjects();
   const freshP = projects.find(x => x.id === activeId);
   if (freshP) renderImages(freshP.images);
