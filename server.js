@@ -319,10 +319,16 @@ app.delete('/api/projects', wrap(async (req, res) => {
 }));
 
 // ─── Images API ───────────────────────────────────────────────────────────────
-// Two-phase upload to allow parallel file transfers with a single atomic DB write:
-//   1. POST /api/upload-temp  — upload one image to Blob, return {filename, thumbFilename}
-//   2. POST /api/projects/:id/images/register — insert pre-uploaded images into DB in one write
-// This avoids the race condition of per-file DB reads/writes and removes the main bottleneck.
+// Delete Blob files by URL/filename without touching the DB — used when the
+// client discards local changes to clean up temp files that were never saved.
+app.delete('/api/blobs', wrap(async (req, res) => {
+  const { filenames = [] } = req.body;
+  await Promise.all(filenames.filter(Boolean).map(deleteImageFile)).catch(() => {});
+  res.json({ ok: true });
+}));
+
+// Two-phase upload: Phase 1 uploads file to Blob; Phase 2 (now done via /state save)
+// registers it in the DB. This avoids per-file DB reads/writes.
 
 app.post('/api/upload-temp', upload.single('image'), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });

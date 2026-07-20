@@ -6,11 +6,11 @@ let aboutData = { email: '', instagram: '', bio: '' };
 let selectedProjectIds = new Set();
 let selectedImageIds = new Set();
 let insertAtIndex = null;     // null = append to end; number = insert before that index
-let isUploading = false;      // guard against concurrent upload calls
-let isDirty = false;          // unsaved local changes exist
-let saveTimer = null;         // debounce timer for auto-save
-let nextTempId = -1;          // temporary negative IDs for locally-added images
-let pendingBlobDeletes = [];  // filenames to clean up on next save (temp images deleted locally)
+let isUploading = false;          // guard against concurrent upload calls
+let isDirty = false;              // unsaved local changes exist (not yet committed to server)
+let savedProjectSnapshot = null; // deep copy of project at last successful save or open
+let nextTempId = -1;              // temporary negative IDs for locally-added images
+let pendingBlobDeletes = [];      // filenames to clean up on next save (temp images deleted locally)
 
 /* ─── DOM refs ───────────────────────────────────────────── */
 const projectList     = document.getElementById('project-list');
@@ -39,6 +39,7 @@ const confirmOverlay  = document.getElementById('confirm-overlay');
 const confirmMsg      = document.getElementById('confirm-msg');
 const confirmYes      = document.getElementById('confirm-yes');
 const confirmNo       = document.getElementById('confirm-no');
+const unsavedOverlay  = document.getElementById('unsaved-overlay');
 const aboutEditor     = document.getElementById('about-editor');
 const fAboutEmail     = document.getElementById('f-about-email');
 const fAboutIg        = document.getElementById('f-about-ig');
@@ -114,13 +115,14 @@ function updateProjectBulkBar() {
 
 async function selectProject(id) {
   if (isDirty && activeId !== null && activeId !== id) {
-    clearTimeout(saveTimer);
-    await saveCurrentProject();
+    const proceed = await askUnsaved();
+    if (!proceed) return;
   }
   isDirty = false;
   activeId = id;
   const p = projects.find(x => x.id === id);
   if (!p) return;
+  savedProjectSnapshot = JSON.parse(JSON.stringify(p));
   selectedImageIds.clear();
 
   // Update list highlight
@@ -147,9 +149,10 @@ async function selectProject(id) {
 /* ─── About editor ───────────────────────────────────────── */
 async function openAboutEditor() {
   if (isDirty && activeId !== null) {
-    clearTimeout(saveTimer);
-    await saveCurrentProject();
+    const proceed = await askUnsaved();
+    if (!proceed) return;
   }
+  isDirty = false;
   activeId = null;
   document.querySelectorAll('.project-item').forEach(el => el.classList.remove('active'));
   editorForm.hidden  = true;
@@ -186,8 +189,6 @@ async function saveCurrentProject() {
   if (!activeId) return;
   const p = projects.find(x => x.id === activeId);
   if (!p) return;
-  clearTimeout(saveTimer);
-  saveTimer = null;
 
   const body = {
     title:       fTitle.value.trim(),
@@ -216,6 +217,7 @@ async function saveCurrentProject() {
     if (!res.ok) throw new Error(`${res.status}`);
     const updated = await res.json();
     projects = projects.map(pr => pr.id === activeId ? updated : pr);
+    savedProjectSnapshot = JSON.parse(JSON.stringify(updated));
     const freshP = projects.find(x => x.id === activeId);
     if (freshP) renderImages(freshP.images);
     formTitle.textContent = updated.title || updated.client || '(senza titolo)';
@@ -227,10 +229,56 @@ async function saveCurrentProject() {
   }
 }
 
-function scheduleSave() {
+function markDirty() {
   isDirty = true;
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveCurrentProject, 3000);
+}
+
+// Returns a Promise that resolves to true (proceed) or false (cancel).
+// Shows the unsaved-changes dialog with Save / Leave / Cancel options.
+function askUnsaved() {
+  return new Promise(resolve => {
+    unsavedOverlay.hidden = false;
+    document.getElementById('unsaved-save').onclick = async () => {
+      unsavedOverlay.hidden = true;
+      await saveCurrentProject();
+      resolve(true);
+    };
+    document.getElementById('unsaved-leave').onclick = () => {
+      unsavedOverlay.hidden = true;
+      discardChanges();
+      resolve(true);
+    };
+    document.getElementById('unsaved-cancel').onclick = () => {
+      unsavedOverlay.hidden = true;
+      resolve(false);
+    };
+  });
+}
+
+// Reverts local changes: restores project to the last saved snapshot and
+// requests cleanup of any temp Blob files that were never committed to the DB.
+function discardChanges() {
+  const p = projects.find(x => x.id === activeId);
+  if (p) {
+    const tempBlobs = p.images
+      .filter(img => img.id < 0)
+      .flatMap(img => [img.filename, img.thumbFilename]);
+    const blobs = [...tempBlobs, ...pendingBlobDeletes].filter(Boolean);
+    if (blobs.length > 0) {
+      fetch('/api/blobs', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filenames: blobs })
+      }).catch(() => {});
+    }
+  }
+  if (savedProjectSnapshot) {
+    projects = projects.map(pr =>
+      pr.id === activeId ? JSON.parse(JSON.stringify(savedProjectSnapshot)) : pr
+    );
+  }
+  pendingBlobDeletes = [];
+  isDirty = false;
 }
 
 function updatePublishButton(p) {
@@ -329,7 +377,7 @@ function renderImages(images) {
       if (p) {
         p.images = order.map(o => p.images.find(img => img.id === o.id)).filter(Boolean);
       }
-      scheduleSave();
+      markDirty();
     }
   });
 }
@@ -470,7 +518,7 @@ async function uploadFiles(files, insertAt = null) {
 
       renderImages(p.images);
       renderProjectList();
-      scheduleSave();
+      markDirty();
     }
 
     if (failed) {
@@ -487,7 +535,7 @@ function saveImageField(imgId, field, value) {
   const img = p && p.images.find(i => i.id === imgId);
   if (img) {
     img[field] = value;
-    scheduleSave();
+    markDirty();
   }
 }
 
@@ -495,7 +543,6 @@ function deleteImage(imgId) {
   const p = projects.find(x => x.id === activeId);
   if (!p) return;
   if (imgId < 0) {
-    // Temp image not yet in DB — track its blobs for cleanup on next save
     const img = p.images.find(i => i.id === imgId);
     if (img) pendingBlobDeletes.push(img.filename, img.thumbFilename);
   }
@@ -503,7 +550,7 @@ function deleteImage(imgId) {
   p.images = p.images.filter(i => i.id !== imgId);
   renderImages(p.images);
   renderProjectList();
-  scheduleSave();
+  markDirty();
 }
 
 function deleteSelectedImages() {
@@ -521,7 +568,7 @@ function deleteSelectedImages() {
   selectedImageIds.clear();
   renderImages(p.images);
   renderProjectList();
-  scheduleSave();
+  markDirty();
 }
 
 async function deleteSelectedProjects() {
@@ -593,12 +640,19 @@ function bindEvents() {
     fTitle.select();
   });
 
-  // Save — manual button, Enter, autosave while typing (debounced) and on blur
+  // Save — manual button only (or Enter in any field)
   saveBtn.addEventListener('click', saveCurrentProject);
   [fTitle, fClient, fYear, fDesc].forEach(el => {
     el.addEventListener('keydown', e => { if (e.key === 'Enter') saveCurrentProject(); });
-    el.addEventListener('input', scheduleSave);
-    el.addEventListener('blur', () => { if (activeId !== null) saveCurrentProject(); });
+    el.addEventListener('input', markDirty);
+  });
+
+  // Warn before tab close / refresh if there are unsaved changes
+  window.addEventListener('beforeunload', e => {
+    if (isDirty) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
   });
 
   // Publish / unpublish

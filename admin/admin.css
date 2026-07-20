@@ -498,7 +498,8 @@ textarea:focus { border-color: var(--accent); }
 }
 
 /* ─── Confirm dialog ──────────────────────────────────── */
-#confirm-overlay {
+#confirm-overlay,
+#unsaved-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.3);
@@ -524,6 +525,27 @@ textarea:focus { border-color: var(--accent); }
 #confirm-actions {
   display: flex;
   gap: 10px;
+  justify-content: flex-end;
+}
+
+#unsaved-box {
+  background: #fff;
+  padding: 28px 32px;
+  border-radius: 4px;
+  max-width: 420px;
+  width: calc(100% - 48px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+#unsaved-msg {
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+#unsaved-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
   justify-content: flex-end;
 }
 
