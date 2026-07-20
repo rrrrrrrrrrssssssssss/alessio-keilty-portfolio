@@ -67,7 +67,7 @@ function renderProjectList() {
     li.innerHTML = `
       <input type="checkbox" class="project-item-check" ${selectedProjectIds.has(p.id) ? 'checked' : ''}>
       <span class="project-item-drag" title="Trascina per riordinare">⠿</span>
-      <span class="project-item-name">${p.title || '(senza titolo)'}</span>
+      <span class="project-item-name">${p.title || p.client || '(senza titolo)'}</span>
       ${isDraft ? '<span class="project-item-badge">Bozza</span>' : ''}
       <span class="project-item-meta">${p.images.length} img</span>
     `;
@@ -118,7 +118,7 @@ function selectProject(id) {
   );
 
   // Fill form
-  formTitle.textContent = p.title || '(senza titolo)';
+  formTitle.textContent = p.title || p.client || '(senza titolo)';
   fTitle.value  = p.title  || '';
   fClient.value = p.client || '';
   fYear.value   = p.year   || '';
@@ -179,7 +179,7 @@ async function saveProject() {
   });
   const updated = await res.json();
   projects = projects.map(p => p.id === activeId ? { ...updated, images: p.images } : p);
-  formTitle.textContent = updated.title || '(senza titolo)';
+  formTitle.textContent = updated.title || updated.client || '(senza titolo)';
   renderProjectList();
   flashStatus('Salvato ✓');
 }
@@ -516,7 +516,7 @@ function bindEvents() {
   // Delete project
   deleteProjBtn.addEventListener('click', () => {
     confirmDelete(
-      `Eliminare il progetto "${fTitle.value || '(senza titolo)'}" e tutte le sue immagini?`,
+      `Eliminare il progetto "${fTitle.value || fClient.value || '(senza titolo)'}" e tutte le sue immagini?`,
       async () => {
         await fetch(`/api/projects/${activeId}`, { method: 'DELETE' });
         projects = projects.filter(p => p.id !== activeId);

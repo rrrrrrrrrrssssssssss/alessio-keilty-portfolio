@@ -22,10 +22,14 @@ const { put, list, del } = USE_BLOB ? require('@vercel/blob') : {};
 // ─── Database ─────────────────────────────────────────────────────────────────
 const DB_PATH = path.join(BASE, 'data.json');
 
-// In-memory cache: always authoritative after first load.
-// Local dev: single persistent process → memory is always current, no CDN stale reads.
-// Vercel serverless: each invocation starts with null → loads fresh from blob once.
+// In-memory cache: used in local dev (single persistent process) for performance.
+// In Vercel serverless, warm instances can serve multiple requests but different
+// instances don't share memory — so a write on one instance leaves others stale.
+// To avoid serving outdated data after an upload/edit, blob mode always fetches
+// fresh from Blob on each request. The blob URL is cached after first discovery
+// to skip the list() call on every request.
 let dbCache = null;
+let blobUrl = null;
 
 function readLocalDB() {
   if (!fs.existsSync(DB_PATH)) return { projects: [] };
@@ -34,42 +38,45 @@ function readLocalDB() {
 }
 
 async function readDB() {
-  if (dbCache) return dbCache;
-
   if (!USE_BLOB) {
+    // Local dev: single process, memory is always current
+    if (dbCache) return dbCache;
     dbCache = readLocalDB();
     return dbCache;
   }
 
-  const { blobs } = await list({ prefix: 'db/data.json' });
-
-  if (blobs.length === 0) {
-    // First deploy: seed blob from the data.json bundled in the repo
-    const local = readLocalDB();
-    await writeDB(local);
-    return local;
+  // Blob mode: always fetch fresh — warm serverless instances must not serve stale cache
+  if (!blobUrl) {
+    const { blobs } = await list({ prefix: 'db/data.json' });
+    if (blobs.length === 0) {
+      // First deploy: seed blob from the data.json bundled in the repo
+      const local = readLocalDB();
+      await writeDB(local);
+      return local;
+    }
+    blobUrl = blobs[0].url;
   }
 
-  // Blob exists — fetch it; throw on failure so we never overwrite with stale local data
-  const res = await fetch(blobs[0].url + '?t=' + Date.now());
+  const res = await fetch(blobUrl + '?t=' + Date.now());
   if (!res.ok) throw new Error(`readDB: blob fetch failed (${res.status})`);
   dbCache = await res.json();
   return dbCache;
 }
 
 async function writeDB(data) {
-  dbCache = data; // update memory first so subsequent reads are immediately consistent
+  dbCache = data; // update memory so subsequent reads within the same invocation are consistent
 
   if (!USE_BLOB) {
     fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf8');
     return;
   }
-  await put('db/data.json', JSON.stringify(data, null, 2), {
+  const result = await put('db/data.json', JSON.stringify(data, null, 2), {
     access: 'public',
     addRandomSuffix: false,
     allowOverwrite: true,
     contentType: 'application/json'
   });
+  blobUrl = result.url; // keep URL in sync in case it ever changes
 }
 
 function maxId(arr) {
