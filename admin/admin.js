@@ -1,3 +1,11 @@
+/* ─── Session guard: redirect to login on 401 ───────────── */
+const _fetch = window.fetch.bind(window);
+window.fetch = async (...args) => {
+  const res = await _fetch(...args);
+  if (res.status === 401) { window.location.href = '/admin/login'; }
+  return res;
+};
+
 /* ─── State ─────────────────────────────────────────────── */
 let projects = [];
 let activeId = null;

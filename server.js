@@ -4,6 +4,7 @@ const multer  = require('multer');
 const sharp   = require('sharp');
 const path    = require('path');
 const fs      = require('fs');
+const crypto  = require('crypto');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -18,6 +19,41 @@ const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 // Without it (local dev), the app uses the local filesystem as before.
 const USE_BLOB = !!process.env.BLOB_READ_WRITE_TOKEN;
 const { put, list, del } = USE_BLOB ? require('@vercel/blob') : {};
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+// Cookie signing key derived from the password — no separate env var needed.
+const COOKIE_SECRET  = crypto.createHash('sha256')
+  .update('ak-cookie-v1:' + ADMIN_PASSWORD).digest('hex');
+const COOKIE_NAME    = 'ak_sess';
+const SESSION_TOKEN  = crypto.createHmac('sha256', COOKIE_SECRET)
+  .update('authenticated').digest('hex');
+
+function parseCookies(req) {
+  const out = {};
+  (req.headers.cookie || '').split(';').forEach(part => {
+    const idx = part.indexOf('=');
+    if (idx < 0) return;
+    out[part.slice(0, idx).trim()] = decodeURIComponent(part.slice(idx + 1).trim());
+  });
+  return out;
+}
+
+function isAuthenticated(req) {
+  return ADMIN_PASSWORD && parseCookies(req)[COOKIE_NAME] === SESSION_TOKEN;
+}
+
+// Middleware for HTML pages (admin panel): redirect to login on failure.
+function requireAuthPage(req, res, next) {
+  if (isAuthenticated(req)) return next();
+  res.redirect('/admin/login');
+}
+
+// Middleware for API calls (XHR): return 401 JSON on failure.
+function requireAuthApi(req, res, next) {
+  if (isAuthenticated(req)) return next();
+  res.status(401).json({ error: 'Sessione scaduta — ricarica la pagina' });
+}
 
 // ─── Database ─────────────────────────────────────────────────────────────────
 const DB_PATH = path.join(BASE, 'data.json');
@@ -173,13 +209,87 @@ const upload = multer({
 // ─── Static ───────────────────────────────────────────────────────────────────
 if (!USE_BLOB) fs.mkdirSync(UPLOADS, { recursive: true });
 app.use(express.json());
+app.use(express.urlencoded({ extended: false })); // for login form POST
 // Prevent browsers and Vercel edge from caching API responses so changes
 // made in the admin are always visible immediately on the public site.
 app.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 app.use('/uploads', express.static(UPLOADS));
 app.use('/fonts',   express.static(path.join(BASE, 'Font')));
 app.use(express.static(path.join(BASE, 'public')));
-app.use('/admin',   express.static(path.join(BASE, 'admin')));
+
+// ─── Login page & auth routes (must be before the protected /admin static) ───
+app.get('/admin/login', (req, res) => {
+  const err = req.query.error ? '<p class="err">Password errata.</p>' : '';
+  res.send(`<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Accesso — Admin</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: #f4f4f4; display: flex; align-items: center;
+         justify-content: center; min-height: 100vh; }
+  .box { background: #fff; padding: 44px 40px 36px; border-radius: 4px;
+         box-shadow: 0 4px 24px rgba(0,0,0,.10); width: 320px; }
+  h1   { font-size: 15px; font-weight: 600; letter-spacing: .02em;
+         margin-bottom: 28px; }
+  input { display: block; width: 100%; padding: 9px 12px; border: 1px solid #d4d4d4;
+          border-radius: 3px; font-size: 14px; margin-bottom: 14px;
+          outline: none; transition: border-color .15s; }
+  input:focus { border-color: #999; }
+  button { display: block; width: 100%; padding: 10px; background: #111;
+           color: #fff; border: none; border-radius: 3px; font-size: 14px;
+           cursor: pointer; transition: background .15s; }
+  button:hover { background: #333; }
+  .err { font-size: 12px; color: #c00; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Alessio Keilty — Admin</h1>
+  ${err}
+  <form method="POST" action="/api/auth/login">
+    <input type="password" name="password" placeholder="Password" autofocus required>
+    <button type="submit">Accedi</button>
+  </form>
+</div>
+</body>
+</html>`);
+});
+
+app.post('/api/auth/login', (req, res) => {
+  if (!ADMIN_PASSWORD) {
+    return res.status(500).send('ADMIN_PASSWORD non configurata sul server.');
+  }
+  if (req.body.password === ADMIN_PASSWORD) {
+    const secure = USE_BLOB ? '; Secure' : '';
+    res.setHeader('Set-Cookie',
+      `${COOKIE_NAME}=${SESSION_TOKEN}; HttpOnly; Path=/; SameSite=Strict${secure}`);
+    return res.redirect('/admin/');
+  }
+  res.redirect('/admin/login?error=1');
+});
+
+app.get('/api/auth/logout', (req, res) => {
+  res.setHeader('Set-Cookie', `${COOKIE_NAME}=; HttpOnly; Path=/; Max-Age=0; SameSite=Strict`);
+  res.redirect('/admin/login');
+});
+
+// Protected admin panel — all routes under /admin require auth
+app.use('/admin', requireAuthPage, express.static(path.join(BASE, 'admin')));
+
+// ─── API auth guard ───────────────────────────────────────────────────────────
+// Public: GET /api/projects, GET /api/about, GET /api/health (front-end needs these).
+// Everything else (all writes + admin-only reads) requires a valid session.
+app.use('/api', (req, res, next) => {
+  const publicGet = req.method === 'GET' &&
+    (req.path === '/projects' || req.path === '/about' || req.path === '/health');
+  const authRoute = req.path === '/auth/login' || req.path === '/auth/logout';
+  if (publicGet || authRoute) return next();
+  requireAuthApi(req, res, next);
+});
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

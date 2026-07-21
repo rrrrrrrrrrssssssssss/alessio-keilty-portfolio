@@ -61,6 +61,17 @@ html, body {
 }
 #site-link:hover { color: var(--accent); }
 
+#logout-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  margin-left: auto;
+  padding: 4px 8px;
+  border-radius: 3px;
+  transition: background .15s;
+}
+#logout-link:hover { background: var(--hover); color: var(--accent); }
+
 #project-list {
   list-style: none;
   overflow-y: auto;
