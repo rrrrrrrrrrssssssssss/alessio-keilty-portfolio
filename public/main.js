@@ -172,11 +172,15 @@ function buildIndex() {
     });
 
     const titleYear = [project.title, project.year].filter(Boolean).join(', ');
+    // On mobile the inline label uses client as fallback when there is no title
+    const mobileFirst    = project.title || project.client || '';
+    const mobileTitleYear = [mobileFirst, project.year].filter(Boolean).join(', ');
 
-    if (titleYear) {
+    if (mobileTitleYear) {
       const titleInline = document.createElement('div');
       titleInline.className = 'col-title-inline';
       if (project.title && project.year) {
+        // Two-line layout: title on first line, year below
         const titleLine = document.createElement('div');
         titleLine.textContent = project.title + ',';
         const yearLine = document.createElement('div');
@@ -184,7 +188,7 @@ function buildIndex() {
         titleInline.appendChild(titleLine);
         titleInline.appendChild(yearLine);
       } else {
-        titleInline.textContent = titleYear;
+        titleInline.textContent = mobileTitleYear;
       }
       colImagesInner.appendChild(titleInline);
     }
