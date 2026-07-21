@@ -35,6 +35,7 @@ const fClient         = document.getElementById('f-client');
 const fYear           = document.getElementById('f-year');
 const fDesc           = document.getElementById('f-desc');
 const saveBtn         = document.getElementById('save-btn');
+const savePublishBtn  = document.getElementById('save-publish-btn');
 const saveStatus      = document.getElementById('save-status');
 const deleteProjBtn   = document.getElementById('delete-project-btn');
 const publishToggleBtn = document.getElementById('publish-toggle-btn');
@@ -195,7 +196,7 @@ async function saveAbout() {
 /* ─── Save project ───────────────────────────────────────── */
 // Sends the complete project state (metadata + all images) in one atomic write,
 // eliminating all per-operation race conditions on the server-side DB.
-async function saveCurrentProject() {
+async function saveCurrentProject(publishedOverride) {
   if (!activeId) return;
   const p = projects.find(x => x.id === activeId);
   if (!p) return;
@@ -215,6 +216,7 @@ async function saveCurrentProject() {
     })),
     filesToDelete: pendingBlobDeletes.filter(Boolean)
   };
+  if (publishedOverride !== undefined) body.published = publishedOverride;
   pendingBlobDeletes = [];
 
   flashStatus('Salvataggio...');
@@ -231,9 +233,10 @@ async function saveCurrentProject() {
     const freshP = projects.find(x => x.id === activeId);
     if (freshP) renderImages(freshP.images);
     formTitle.textContent = updated.title || updated.client || '(senza titolo)';
+    updatePublishButton(updated);
     renderProjectList();
     isDirty = false;
-    flashStatus('Salvato ✓');
+    flashStatus(publishedOverride === true ? 'Pubblicato ✓' : 'Salvato ✓');
   } catch {
     flashStatus('Errore salvataggio — riprova');
   }
@@ -661,7 +664,8 @@ function bindEvents() {
   });
 
   // Save — manual button only (or Enter in any field)
-  saveBtn.addEventListener('click', saveCurrentProject);
+  saveBtn.addEventListener('click', () => saveCurrentProject());
+  savePublishBtn.addEventListener('click', () => saveCurrentProject(true));
   [fTitle, fClient, fYear, fDesc].forEach(el => {
     el.addEventListener('keydown', e => { if (e.key === 'Enter') saveCurrentProject(); });
     el.addEventListener('input', markDirty);
