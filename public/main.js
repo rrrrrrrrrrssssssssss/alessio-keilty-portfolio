@@ -179,10 +179,10 @@ function buildIndex() {
     if (mobileTitleYear) {
       const titleInline = document.createElement('div');
       titleInline.className = 'col-title-inline';
-      if (project.title && project.year) {
-        // Two-line layout: title on first line, year below
+      if (mobileFirst && project.year) {
+        // Two-line layout: title or client on first line, year below
         const titleLine = document.createElement('div');
-        titleLine.textContent = project.title + ',';
+        titleLine.textContent = mobileFirst + ',';
         const yearLine = document.createElement('div');
         yearLine.textContent = project.year;
         titleInline.appendChild(titleLine);
