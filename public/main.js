@@ -3,7 +3,7 @@ let items = [];   // [{ image, project, projectImages }]
 let N = 0;
 let cur = 0;
 let closeAboutTimers = [];
-let sidebarTransitionEnd = null; // tracks the active FLIP transitionend listener
+let sidebarScrollRaf = null; // rAF id for the active sidebar scroll animation
 
 /* ─── DOM refs ───────────────────────────────────────────────────── */
 const track       = document.getElementById('track');
@@ -342,6 +342,25 @@ function setupIndexElasticBounce() {
   });
 }
 
+/* ─── Sidebar scroll animation ───────────────────────────────────── */
+function scrollSidebarTo(target) {
+  const max = sidebarEl.scrollWidth - sidebarEl.clientWidth;
+  target = Math.max(0, Math.min(target, max));
+  if (sidebarScrollRaf) cancelAnimationFrame(sidebarScrollRaf);
+  const start = sidebarEl.scrollLeft;
+  const diff = target - start;
+  if (Math.abs(diff) < 2) return;
+  const duration = 300;
+  const t0 = performance.now();
+  function step(now) {
+    const t = Math.min((now - t0) / duration, 1);
+    const ease = 1 - Math.pow(1 - t, 3); // cubic ease-out
+    sidebarEl.scrollLeft = start + diff * ease;
+    sidebarScrollRaf = t < 1 ? requestAnimationFrame(step) : null;
+  }
+  sidebarScrollRaf = requestAnimationFrame(step);
+}
+
 /* ─── Update UI ──────────────────────────────────────────────────── */
 function updateUI() {
   const item = items[cur];
@@ -370,32 +389,7 @@ function updateUI() {
     const sidebarRect = sidebarEl.getBoundingClientRect();
     if (window.innerWidth <= 768) {
       const delta = thumbRect.left - sidebarRect.left;
-      if (Math.abs(delta) >= 2) {
-        // Cancel any in-progress FLIP to avoid its transitionend clearing the new animation
-        if (sidebarTransitionEnd) {
-          sidebarInner.removeEventListener('transitionend', sidebarTransitionEnd);
-          sidebarTransitionEnd = null;
-        }
-        // Read the current mid-animation translateX so rapid swipes don't snap.
-        // delta is measured with the transform active, so layout-x of thumb = delta - T_mid + scrollLeft.
-        // Correct scrollLeft target: scrollLeft += delta - T_mid. T_start stays = delta (errors cancel for visual continuity).
-        const tStr = getComputedStyle(sidebarInner).transform;
-        const vals = tStr && tStr !== 'none' ? tStr.match(/matrix\(([^)]+)\)/) : null;
-        const T_mid = vals ? parseFloat(vals[1].split(',')[4]) : 0;
-        // FLIP: snap scrollLeft to corrected final position, animate from apparent old position
-        sidebarEl.scrollLeft += delta - T_mid;
-        sidebarInner.style.transition = 'none';
-        sidebarInner.style.transform = `translateX(${delta}px)`;
-        sidebarInner.getBoundingClientRect(); // force reflow so browser registers start state
-        sidebarInner.style.transition = 'transform 0.3s ease';
-        sidebarInner.style.transform = 'translateX(0)';
-        sidebarTransitionEnd = () => {
-          sidebarInner.style.transition = '';
-          sidebarInner.style.transform = '';
-          sidebarTransitionEnd = null;
-        };
-        sidebarInner.addEventListener('transitionend', sidebarTransitionEnd, { once: true });
-      }
+      scrollSidebarTo(sidebarEl.scrollLeft + delta);
     } else {
       sidebarEl.scrollTo({ top: sidebarEl.scrollTop + (thumbRect.top - sidebarRect.top), behavior: 'smooth' });
     }
