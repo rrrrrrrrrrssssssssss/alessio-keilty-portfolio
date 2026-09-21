@@ -76,8 +76,8 @@ async function init() {
   // Direct/shared link landing on #index or #about
   if (location.hash === '#index') openGridVisual();
   else if (location.hash === '#about') openAboutVisual();
-  // Desktop intro: flash the index for 500ms then animate to the main view
-  else if (window.innerWidth > 768) {
+  // Intro: flash the index for 500ms then animate to the main view
+  else {
     document.body.classList.add('intro-instant');
     indexCols.scrollLeft = 0;
     indexCols.scrollTop  = 0;
