@@ -368,7 +368,13 @@ function updateUI() {
     const thumbRect   = thumbs[cur].getBoundingClientRect();
     const sidebarRect = sidebarEl.getBoundingClientRect();
     if (window.innerWidth <= 768) {
-      sidebarEl.scrollTo({ left: sidebarEl.scrollLeft + (thumbRect.left - sidebarRect.left), behavior: 'smooth' });
+      const delta = thumbRect.left - sidebarRect.left;
+      // Snap instantly when wrapping around (thumb is far away), smooth otherwise
+      if (Math.abs(delta) > sidebarEl.clientWidth * 1.5) {
+        sidebarEl.scrollLeft += delta;
+      } else {
+        sidebarEl.scrollTo({ left: sidebarEl.scrollLeft + delta, behavior: 'smooth' });
+      }
     } else {
       sidebarEl.scrollTo({ top: sidebarEl.scrollTop + (thumbRect.top - sidebarRect.top), behavior: 'smooth' });
     }
