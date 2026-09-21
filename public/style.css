@@ -289,6 +289,7 @@ body.index-open #bottom-bar {
   transform: translateX(100%);
   transition: transform 0.5s ease;
 }
+#grid-overlay.intro-close { transition-duration: 0.2s; }
 
 #grid-overlay.open {
   transform: translateX(0);

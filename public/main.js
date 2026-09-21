@@ -86,7 +86,15 @@ async function init() {
     document.body.classList.add('index-open');
     document.body.offsetHeight; // flush — apply all the above instantly
     document.body.classList.remove('intro-instant');
-    setTimeout(() => closeGridVisual(), 500);
+    setTimeout(() => {
+      if (window.innerWidth <= 768) {
+        gridOverlay.classList.add('intro-close');
+        gridOverlay.addEventListener('transitionend', () => {
+          gridOverlay.classList.remove('intro-close');
+        }, { once: true });
+      }
+      closeGridVisual();
+    }, 500);
   }
 }
 
