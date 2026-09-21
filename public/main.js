@@ -3,6 +3,7 @@ let items = [];   // [{ image, project, projectImages }]
 let N = 0;
 let cur = 0;
 let closeAboutTimers = [];
+let sidebarTransitionEnd = null; // tracks the active FLIP transitionend listener
 
 /* ─── DOM refs ───────────────────────────────────────────────────── */
 const track       = document.getElementById('track');
@@ -370,18 +371,27 @@ function updateUI() {
     if (window.innerWidth <= 768) {
       const delta = thumbRect.left - sidebarRect.left;
       if (Math.abs(delta) >= 2) {
-        // FLIP: snap scrollLeft instantly, then animate via CSS transform from apparent old position.
-        // More reliable than scrollTo({behavior:'smooth'}) on iOS Safari for long distances.
+        // Cancel any in-progress FLIP to avoid its transitionend clearing the new animation
+        if (sidebarTransitionEnd) {
+          sidebarInner.removeEventListener('transitionend', sidebarTransitionEnd);
+          sidebarTransitionEnd = null;
+        }
+        // Read the current mid-animation transform so rapid swipes don't snap
+        const tStr = getComputedStyle(sidebarInner).transform;
+        const T_mid = (tStr && tStr !== 'none') ? new DOMMatrix(tStr).m41 : 0;
+        // FLIP: snap scrollLeft to final position, animate from apparent old position via CSS transform
         sidebarEl.scrollLeft += delta;
         sidebarInner.style.transition = 'none';
-        sidebarInner.style.transform = `translateX(${delta}px)`;
+        sidebarInner.style.transform = `translateX(${delta + T_mid}px)`;
         sidebarInner.getBoundingClientRect(); // force reflow so browser registers start state
         sidebarInner.style.transition = 'transform 0.3s ease';
         sidebarInner.style.transform = 'translateX(0)';
-        sidebarInner.addEventListener('transitionend', () => {
+        sidebarTransitionEnd = () => {
           sidebarInner.style.transition = '';
           sidebarInner.style.transform = '';
-        }, { once: true });
+          sidebarTransitionEnd = null;
+        };
+        sidebarInner.addEventListener('transitionend', sidebarTransitionEnd, { once: true });
       }
     } else {
       sidebarEl.scrollTo({ top: sidebarEl.scrollTop + (thumbRect.top - sidebarRect.top), behavior: 'smooth' });
