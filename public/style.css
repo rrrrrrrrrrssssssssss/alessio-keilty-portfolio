@@ -247,6 +247,10 @@ body.about-open #meta-desc {
   pointer-events: auto;
 }
 
+/* ─── Suppress all transitions during the intro instant-open ──── */
+.intro-instant,
+.intro-instant * { transition: none !important; animation: none !important; }
+
 /* ─── Slide-out transitions for main content ──────────── */
 #viewport,
 #sidebar-area {
