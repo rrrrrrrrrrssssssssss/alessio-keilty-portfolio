@@ -376,13 +376,16 @@ function updateUI() {
           sidebarInner.removeEventListener('transitionend', sidebarTransitionEnd);
           sidebarTransitionEnd = null;
         }
-        // Read the current mid-animation transform so rapid swipes don't snap
+        // Read the current mid-animation translateX so rapid swipes don't snap.
+        // delta is measured with the transform active, so layout-x of thumb = delta - T_mid + scrollLeft.
+        // Correct scrollLeft target: scrollLeft += delta - T_mid. T_start stays = delta (errors cancel for visual continuity).
         const tStr = getComputedStyle(sidebarInner).transform;
-        const T_mid = (tStr && tStr !== 'none') ? new DOMMatrix(tStr).m41 : 0;
-        // FLIP: snap scrollLeft to final position, animate from apparent old position via CSS transform
-        sidebarEl.scrollLeft += delta;
+        const vals = tStr && tStr !== 'none' ? tStr.match(/matrix\(([^)]+)\)/) : null;
+        const T_mid = vals ? parseFloat(vals[1].split(',')[4]) : 0;
+        // FLIP: snap scrollLeft to corrected final position, animate from apparent old position
+        sidebarEl.scrollLeft += delta - T_mid;
         sidebarInner.style.transition = 'none';
-        sidebarInner.style.transform = `translateX(${delta + T_mid}px)`;
+        sidebarInner.style.transform = `translateX(${delta}px)`;
         sidebarInner.getBoundingClientRect(); // force reflow so browser registers start state
         sidebarInner.style.transition = 'transform 0.3s ease';
         sidebarInner.style.transform = 'translateX(0)';
