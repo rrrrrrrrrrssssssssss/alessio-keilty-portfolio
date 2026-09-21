@@ -369,11 +369,19 @@ function updateUI() {
     const sidebarRect = sidebarEl.getBoundingClientRect();
     if (window.innerWidth <= 768) {
       const delta = thumbRect.left - sidebarRect.left;
-      // Snap instantly when wrapping around (thumb is far away), smooth otherwise
-      if (Math.abs(delta) > sidebarEl.clientWidth * 1.5) {
+      if (Math.abs(delta) >= 2) {
+        // FLIP: snap scrollLeft instantly, then animate via CSS transform from apparent old position.
+        // More reliable than scrollTo({behavior:'smooth'}) on iOS Safari for long distances.
         sidebarEl.scrollLeft += delta;
-      } else {
-        sidebarEl.scrollTo({ left: sidebarEl.scrollLeft + delta, behavior: 'smooth' });
+        sidebarInner.style.transition = 'none';
+        sidebarInner.style.transform = `translateX(${delta}px)`;
+        sidebarInner.getBoundingClientRect(); // force reflow so browser registers start state
+        sidebarInner.style.transition = 'transform 0.3s ease';
+        sidebarInner.style.transform = 'translateX(0)';
+        sidebarInner.addEventListener('transitionend', () => {
+          sidebarInner.style.transition = '';
+          sidebarInner.style.transform = '';
+        }, { once: true });
       }
     } else {
       sidebarEl.scrollTo({ top: sidebarEl.scrollTop + (thumbRect.top - sidebarRect.top), behavior: 'smooth' });
