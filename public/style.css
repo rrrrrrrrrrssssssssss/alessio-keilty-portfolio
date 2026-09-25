@@ -56,7 +56,7 @@ html, body {
 }
 
 @media (hover: hover) {
-  #top-bar:has(:hover) #expand-btn {
+  #expand-btn:hover {
     opacity: 0.3;
   }
 }
@@ -338,7 +338,12 @@ body.index-open #bottom-bar {
   z-index: 1;
 }
 
-#index-title-btn,
+#index-title-btn {
+  color: #000;
+  user-select: none;
+  pointer-events: none;
+}
+
 #grid-close {
   cursor: pointer;
   color: #000;
@@ -347,7 +352,6 @@ body.index-open #bottom-bar {
   pointer-events: auto;
 }
 
-#index-title-btn:hover,
 #grid-close:hover { opacity: 0.3; }
 
 #index-cols {
