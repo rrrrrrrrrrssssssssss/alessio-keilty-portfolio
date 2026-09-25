@@ -464,16 +464,16 @@ function bindEvents() {
     if (e.key === 'Escape') { closeGrid(); closeAbout(); }
   });
 
-  // expandBtn opens/closes the index. galleryIndexBtn is normally a label
-  // but becomes tappable on mobile when the index is open ("Index overview"
-  // → close index) or when about was opened from the index ("Back to Index
-  // overview" → close about and return to index via history).
+  // galleryIndexBtn:
+  //   viewer state  → "Viewer"           → opens index
+  //   index open    → "Index overview"   → closes index (mobile only)
+  //   about open    → "Back to"          → opens index (via openGrid)
   galleryIndexBtn.addEventListener('click', e => {
     e.stopPropagation();
-    if (document.body.classList.contains('index-open') && window.innerWidth <= 768) {
-      closeGrid();
-    } else if (document.body.classList.contains('about-from-index') && window.innerWidth <= 768) {
-      closeAbout();
+    if (document.body.classList.contains('index-open')) {
+      if (window.innerWidth <= 768) closeGrid();
+    } else {
+      openGrid(); // viewer or about → go to index
     }
   });
   expandBtn.addEventListener('click', e => {
@@ -729,10 +729,11 @@ function openAboutVisual() {
   crossFadeLabel(aboutLink, 'Back');
   showMetaBack();
   document.body.classList.add('about-open');
-  // When coming from the index, show "Back to Index overview" in the top bar
-  // (galleryIndexBtn) so the user knows they can return to the index.
-  if (document.body.classList.contains('about-from-index') && window.innerWidth <= 768) {
-    crossFadeLabel(galleryIndexBtn, 'Back to Index overview');
+  // On mobile, relabel the bottom-bar buttons: "Back to" (galleryIndexBtn)
+  // and "Index overview" (expandBtn) both lead to the index.
+  if (window.innerWidth <= 768) {
+    crossFadeLabel(galleryIndexBtn, 'Back to');
+    crossFadeLabel(expandBtn, 'Index overview');
   }
 }
 
@@ -743,10 +744,11 @@ function closeAboutVisual() {
   closeAboutTimers = [];
 
   // Clear the from-index context immediately so the CSS viewport suppression
-  // lifts before the slide-back animation, and restore the gallery label.
-  if (document.body.classList.contains('about-from-index')) {
-    document.body.classList.remove('about-from-index');
-    if (window.innerWidth <= 768) crossFadeLabel(galleryIndexBtn, 'Viewer');
+  // lifts before the slide-back animation, then restore all bottom-bar labels.
+  document.body.classList.remove('about-from-index');
+  if (window.innerWidth <= 768) {
+    crossFadeLabel(galleryIndexBtn, 'Viewer');
+    crossFadeLabel(expandBtn, 'Open index overview');
   }
 
   crossFadeLabel(aboutLink, 'About');

@@ -46,6 +46,8 @@ html, body {
 #gallery-index-btn {
   color: #000;
   user-select: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
 }
 
 #expand-btn {
@@ -56,9 +58,8 @@ html, body {
 }
 
 @media (hover: hover) {
-  #expand-btn:hover {
-    opacity: 0.3;
-  }
+  #gallery-index-btn:hover { opacity: 0.3; }
+  #expand-btn:hover { opacity: 0.3; }
 }
 
 /* ─── Carousel viewport ───────────────────────────────── */
@@ -716,16 +717,11 @@ body.about-open.about-from-index:not(.about-closing) #viewport {
     display: none;
   }
 
-  /* "Index overview" label becomes tappable on mobile when index is open */
-  body.index-open #gallery-index-btn {
-    cursor: pointer;
-    pointer-events: auto;
-  }
-
-  /* "Back to Index overview" label is tappable when about was opened from index */
-  body.about-from-index #gallery-index-btn {
-    cursor: pointer;
-    pointer-events: auto;
+  /* Padding so the last photos in each column don't hide behind the
+     "Alessio Keilty" + button-bar area, preventing accidental about opens
+     when the user taps a photo near the bottom of the index. */
+  body.index-open .col-images {
+    padding-bottom: 80px;
   }
 
   #grid-overlay {
