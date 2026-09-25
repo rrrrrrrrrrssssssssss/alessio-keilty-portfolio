@@ -614,7 +614,7 @@ function closeGridVisual(keepAbout = false) {
   }
   gridOverlay.classList.remove('open');
   document.body.classList.remove('index-open');
-  crossFadeLabel(expandBtn, 'Open Index Overview');
+  crossFadeLabel(expandBtn, 'Open index overview');
   gridOverlay.addEventListener('transitionend', () => {
     gridOverlay.setAttribute('hidden', '');
   }, { once: true });
@@ -634,10 +634,10 @@ function crossFadeLabel(el, newText) {
     el.style.opacity = '1';
     setTimeout(() => {
       el.style.transition = '';
-      // Force full opacity (instead of clearing back to the stylesheet value):
-      // iOS can leave :active "stuck" after the tap that triggered this label
-      // change, which would otherwise show the dimmed 0.3 state permanently.
       el.style.opacity = '1';
+      // Clear the inline override after iOS :active has settled so CSS
+      // hover rules work again on desktop (~400ms covers the active window).
+      setTimeout(() => { el.style.opacity = ''; }, 400);
     }, 250);
   }, 150);
 }
