@@ -476,7 +476,16 @@ function bindEvents() {
   });
   aboutLink.addEventListener('click', e => {
     e.stopPropagation();
-    document.body.classList.contains('about-open') ? closeAbout() : openAbout();
+    if (document.body.classList.contains('about-open')) {
+      closeAbout();
+    } else if (gridOverlay.classList.contains('open')) {
+      // Index → About directly: close grid first, then open about
+      closeGridVisual(true);
+      if (location.hash !== '#about') history.pushState(null, '', '#about');
+      openAboutVisual();
+    } else {
+      openAbout();
+    }
   });
   metaClient.addEventListener('click', closeAbout);
   metaTitle.addEventListener('click', closeAbout);

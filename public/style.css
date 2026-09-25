@@ -286,6 +286,13 @@ body.index-open #bottom-bar {
     padding: var(--pad);
     background: #fff;
   }
+  /* about-content is opacity:0 but still in flow — collapse it so the
+     bar only wraps "About" + "Alessio Keilty" when index is open */
+  body.index-open #about-content {
+    height: 0;
+    overflow: hidden;
+    margin: 0;
+  }
 }
 
 
