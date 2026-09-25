@@ -275,6 +275,14 @@ body.index-open #bottom-bar {
   pointer-events: none;
 }
 
+@media (min-width: 769px) {
+  body.index-open #bottom-bar {
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 60;
+  }
+}
+
 
 /* ─── Index overlay ───────────────────────────────────── */
 #grid-overlay {
