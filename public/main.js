@@ -464,15 +464,10 @@ function bindEvents() {
     if (e.key === 'Escape') { closeGrid(); closeAbout(); }
   });
 
-  // Expand apre/chiude la griglia (toggle), l'indice la apre soltanto
+  // expandBtn opens the index; galleryIndexBtn ("Viewer") is a label — no action
   expandBtn.addEventListener('click', e => {
     e.stopPropagation();
     document.body.classList.contains('index-open') ? closeGrid() : openGrid();
-  });
-  galleryIndexBtn.addEventListener('click', e => {
-    e.stopPropagation();
-    document.body.classList.contains('index-open') ? closeGrid() : openGrid();
-    galleryIndexBtn.style.opacity = '1';
   });
   aboutLink.addEventListener('click', e => {
     e.stopPropagation();
@@ -490,7 +485,7 @@ function bindEvents() {
   metaClient.addEventListener('click', closeAbout);
   metaTitle.addEventListener('click', closeAbout);
   metaDesc.addEventListener('click', closeAbout);
-  document.getElementById('index-title-btn').addEventListener('click', () => closeGrid(true));
+  document.getElementById('index-title-btn').addEventListener('click', () => {}); // stays on index
   document.getElementById('grid-close').addEventListener('click', () => closeGrid(true));
   document.getElementById('author-name').addEventListener('click', () => {
     if (document.body.classList.contains('about-open')) {
@@ -619,7 +614,7 @@ function closeGridVisual(keepAbout = false) {
   }
   gridOverlay.classList.remove('open');
   document.body.classList.remove('index-open');
-  crossFadeLabel(expandBtn, 'Back');
+  crossFadeLabel(expandBtn, 'Open Index Overview');
   gridOverlay.addEventListener('transitionend', () => {
     gridOverlay.setAttribute('hidden', '');
   }, { once: true });

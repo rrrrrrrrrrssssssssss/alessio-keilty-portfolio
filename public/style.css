@@ -43,7 +43,11 @@ html, body {
   z-index: 30;
 }
 
-#gallery-index-btn,
+#gallery-index-btn {
+  color: #000;
+  user-select: none;
+}
+
 #expand-btn {
   cursor: pointer;
   color: #000;
@@ -52,7 +56,6 @@ html, body {
 }
 
 @media (hover: hover) {
-  #top-bar:has(:hover) #gallery-index-btn,
   #top-bar:has(:hover) #expand-btn {
     opacity: 0.3;
   }
