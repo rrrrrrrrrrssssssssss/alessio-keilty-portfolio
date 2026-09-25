@@ -685,23 +685,30 @@ body.about-open.about-closing #viewport {
     padding: 7px var(--pad) var(--pad);
   }
 
-  /* "Alessio Keilty" slides above the button bar when index opens.
-     #bottom-bar has opacity:0 globally, so we must explicitly override
-     it here (parent opacity always composites children, no child override
-     can fight it). Only #author-name remains visible — About and meta
-     are collapsed via display:none below. */
-  #bottom-bar {
-    transition: opacity 0.3s ease, bottom 0.35s ease;
+  /* "Alessio Keilty" grows upward from the button bar when index opens.
+     #bottom-bar has opacity:0 globally — override here.
+     @keyframes grows max-height from 0 (bar bottom) revealing the text
+     upward; align-items:flex-end keeps text anchored at the bottom so
+     it lifts out of the bar rather than dropping in from the top.
+     fill-mode:both holds max-height:0 during the delay so nothing flashes
+     before the grid finishes sliding in. */
+  @keyframes authorNameReveal {
+    from { max-height: 0; }
+    to   { max-height: 30px; }
   }
 
   body.index-open #bottom-bar {
     opacity: 1;
-    bottom: 48px;
+    bottom: 44px;
     left: 0;
     right: 0;
-    padding: 6px var(--pad) 0;
+    padding: 0 var(--pad) 6px;
     background: #fff;
     z-index: 60;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    animation: authorNameReveal 0.25s ease 0.25s both;
   }
 
   body.index-open #about-content,
