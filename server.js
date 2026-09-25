@@ -215,6 +215,14 @@ app.use(express.urlencoded({ extended: false })); // for login form POST
 app.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 app.use('/uploads', express.static(UPLOADS));
 app.use('/fonts',   express.static(path.join(BASE, 'Font')));
+
+// ─── Versioned previews ────────────────────────────────────────────────────────
+// /1 → legacy version (before intro animation, commit 0de2e1e)
+// /2 → current version (alias for /)
+app.use('/1', express.static(path.join(BASE, 'public-v1')));
+app.get('/1', (req, res) => res.sendFile(path.join(BASE, 'public-v1', 'index.html')));
+app.get('/2', (req, res) => res.sendFile(path.join(BASE, 'public', 'index.html')));
+
 app.use(express.static(path.join(BASE, 'public')));
 
 // ─── Login page & auth routes (must be before the protected /admin static) ───

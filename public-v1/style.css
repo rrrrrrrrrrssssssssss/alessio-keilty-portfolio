@@ -1,0 +1,778 @@
+@font-face {
+  font-family: 'Basel';
+  src: url('/fonts/Basel-Book.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+[hidden] { display: none !important; }
+
+:root {
+  --sw: 76px;    /* sidebar width */
+  --pad: 14px;
+  --gap: 28px;   /* gap uniforme tra elementi */
+  --fs: 11px;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #fff;
+  color: #000;
+  font-family: 'Basel', Helvetica, Arial, sans-serif;
+  font-size: var(--fs);
+  letter-spacing: 0.030em;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ─── Top bar ─────────────────────────────────────────── */
+#top-bar {
+  position: fixed;
+  top: var(--pad);
+  right: calc(var(--sw) + var(--pad) + var(--gap));
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap);
+  z-index: 30;
+}
+
+#gallery-index-btn,
+#expand-btn {
+  cursor: pointer;
+  color: #000;
+  transition: opacity 0.2s;
+  user-select: none;
+}
+
+@media (hover: hover) {
+  #top-bar:has(:hover) #gallery-index-btn,
+  #top-bar:has(:hover) #expand-btn {
+    opacity: 0.3;
+  }
+}
+
+/* ─── Carousel viewport ───────────────────────────────── */
+#viewport {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: calc(var(--sw) + var(--pad));
+  bottom: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+#viewport.cursor-prev {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cline x1='14' y1='8' x2='7' y2='8' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3Cpolygon points='7,4 1,8 7,12' fill='white' stroke='white' stroke-width='2' stroke-linejoin='round'/%3E%3Cline x1='14' y1='8' x2='7' y2='8' stroke='black' stroke-width='1.5' stroke-linecap='round'/%3E%3Cpolygon points='7,4 1,8 7,12' fill='black'/%3E%3C/svg%3E") 8 8, w-resize;
+}
+#viewport.cursor-next {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cline x1='2' y1='8' x2='9' y2='8' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3Cpolygon points='9,4 15,8 9,12' fill='white' stroke='white' stroke-width='2' stroke-linejoin='round'/%3E%3Cline x1='2' y1='8' x2='9' y2='8' stroke='black' stroke-width='1.5' stroke-linecap='round'/%3E%3Cpolygon points='9,4 15,8 9,12' fill='black'/%3E%3C/svg%3E") 8 8, e-resize;
+}
+
+#track {
+  display: flex;
+  height: 100%;
+}
+
+.slide {
+  flex-shrink: 0;
+  /* 100% (not 100vw) ties slide width to #track's actual rendered box, the
+     same box #viewport.clientWidth measures in JS — vw can be a hair off
+     from that in some browsers (notably Firefox), drifting the image
+     off-center as you move through the carousel. */
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 40px 70px;
+  user-select: none;
+}
+
+.slide img {
+  /* width/height (not max-width/max-height): max-* only ever shrinks, never
+     enlarges, so an image smaller than the slide box would render at its
+     native pixel size instead of filling the box. object-fit handles the
+     actual scaling (up or down) while preserving aspect ratio. */
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+/* ─── Sidebar area ────────────────────────────────────── */
+#sidebar-area {
+  position: fixed;
+  top: var(--pad);
+  right: var(--pad);
+  bottom: var(--pad);
+  width: var(--sw);
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+}
+
+/* Contatore sopra la colonna: "01" a sx, "/20" dal centro */
+#sidebar-counter {
+  flex-shrink: 0;
+  display: flex;
+  margin-bottom: 8px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+#cur { width: 50%; text-align: left; }
+#tot { width: 50%; text-align: left; }
+
+#sidebar {
+  flex: 1;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+#sidebar::-webkit-scrollbar { display: none; }
+
+#sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.thumb {
+  width: 100%;
+  flex-shrink: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.thumb img {
+  width: 100%;
+  height: auto;
+  display: block;
+  transition: opacity 0.2s;
+}
+
+.thumb:hover img {
+  opacity: 0.8;
+}
+
+/* ─── Bottom bar ──────────────────────────────────────── */
+#bottom-bar {
+  position: fixed;
+  bottom: var(--pad);
+  left: var(--pad);
+  z-index: 30;
+  pointer-events: none;
+}
+
+#bottom-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap);
+  margin-bottom: 3px;
+}
+
+#about-link {
+  color: #000;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: opacity 0.2s;
+  user-select: none;
+  display: inline-block;
+}
+
+/* Ghost that always reserves the width of "About" (the wider label).
+   "Back" is shorter, so without this the meta-group would shift on toggle. */
+#about-link::after {
+  content: 'About';
+  display: block;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  #about-link:hover { opacity: 0.3; }
+}
+
+#meta-group {
+  display: flex;
+  gap: var(--gap);
+  align-items: baseline;
+}
+
+#meta-client,
+#meta-title,
+#meta-desc {
+  color: #000;
+  transition: opacity 0.2s;
+}
+
+body.about-open #meta-client,
+body.about-open #meta-title,
+body.about-open #meta-desc {
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  body.about-open #bottom-row:has(:hover) #about-link,
+  body.about-open #bottom-row:has(:hover) #meta-client,
+  body.about-open #bottom-row:has(:hover) #meta-title,
+  body.about-open #bottom-row:has(:hover) #meta-desc {
+    opacity: 0.3;
+  }
+}
+
+#meta-back {
+  display: none;
+  cursor: pointer;
+}
+
+#author-name {
+  font-size: 14.5px;
+  letter-spacing: 0.030em;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* ─── Slide-out transitions for main content ──────────── */
+#viewport,
+#sidebar-area {
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+
+body.index-open #viewport {
+  transform: translateX(-100vw);
+  pointer-events: none;
+}
+
+body.index-open #sidebar-area {
+  transform: translateX(-100vw);
+  opacity: 0;
+  pointer-events: none;
+}
+
+#top-bar,
+#bottom-bar {
+  transition: opacity 0.3s ease;
+}
+
+body.index-open #top-bar,
+body.index-open #bottom-bar {
+  opacity: 0;
+  pointer-events: none;
+}
+
+
+/* ─── Index overlay ───────────────────────────────────── */
+#grid-overlay {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  z-index: 50;
+  transform: translateX(100%);
+  transition: transform 0.5s ease;
+}
+
+#grid-overlay.open {
+  transform: translateX(0);
+}
+
+#grid-overlay #index-cols,
+#grid-overlay #index-header {
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
+
+#grid-overlay.open #index-cols,
+#grid-overlay.open #index-header {
+  opacity: 1;
+  transition: opacity 0s;
+}
+
+#index-header {
+  position: absolute;
+  top: var(--pad);
+  left: var(--pad);
+  right: var(--pad);
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap);
+  pointer-events: none;
+  z-index: 1;
+}
+
+#index-title-btn,
+#grid-close {
+  cursor: pointer;
+  color: #000;
+  transition: opacity 0.2s;
+  user-select: none;
+  pointer-events: auto;
+}
+
+#index-title-btn:hover,
+#grid-close:hover { opacity: 0.3; }
+
+#index-cols {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: var(--pad);
+  padding-top: calc(var(--pad) * 2 + 12px);
+  gap: 0;
+}
+
+#index-cols::-webkit-scrollbar { display: none; }
+
+.col-unit {
+  display: flex;
+  flex-shrink: 0;
+  align-items: stretch;
+}
+
+.col-gap {
+  flex-shrink: 0;
+  width: var(--sw);
+}
+
+.project-col {
+  flex-shrink: 0;
+  width: calc(var(--sw) + 20px);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+.project-col::-webkit-scrollbar { display: none; }
+
+.col-images {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Desktop: no separate scroll/clip boundary needed, so the inner wrapper
+   used for the mobile elastic bounce just passes through. */
+.col-images-inner {
+  display: contents;
+}
+
+.col-thumb {
+  display: flex;
+  align-items: flex-start;
+  gap: 3px;
+  cursor: pointer;
+}
+
+.col-thumb img {
+  flex: 0 0 var(--sw);
+  width: var(--sw);
+  height: auto;
+  display: block;
+  transition: opacity 0.2s;
+}
+
+@media (hover: hover) {
+  .col-thumb:hover img { opacity: 0.3; }
+}
+
+.col-num {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.col-total {
+  padding-left: var(--gap);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+@media (min-width: 769px) {
+  .col-gap,
+  .col-total,
+  .col-title-inline {
+    display: none;
+  }
+
+  .project-col {
+    margin-right: 15px;
+  }
+}
+
+.col-meta {
+  padding-top: 2px;
+  padding-right: 7px;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  padding-bottom: var(--pad);
+  align-self: flex-start;
+  width: var(--sw);
+  min-width: 0;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+
+/* ─── About animations ────────────────────────────────── */
+@keyframes aboutSlideOut  { from { transform: translateX(0); }           to { transform: translateX(100vw); } }
+@keyframes aboutFadeIn    { from { opacity: 0; }                         to { opacity: 1; }                  }
+@keyframes aboutSlideBack { from { transform: translateX(100vw); }        to { transform: translateX(0); }    }
+@keyframes aboutFadeOut   { from { opacity: 1; }                         to { opacity: 0; }                  }
+
+/* ─── About content (default: hidden) ────────────────── */
+#about-content {
+  opacity: 0;
+  pointer-events: none;
+  margin-bottom: 6px;
+  line-height: 1.15;
+}
+
+/* Opening: viewport slides out first (0.35s), then content fades in (delay 0.35s) */
+body.about-open:not(.about-closing) #viewport {
+  transform: translateX(100vw);
+  animation: aboutSlideOut 0.35s ease both;
+  pointer-events: none;
+}
+body.about-open:not(.about-closing) #about-content {
+  opacity: 1;
+  pointer-events: auto;
+  animation: aboutFadeIn 0.4s ease 0.35s both;
+}
+
+/* Closing: content fades out first (0.4s), then viewport slides back (delay 0.4s) */
+body.about-open.about-closing #about-content {
+  animation: aboutFadeOut 0.4s ease forwards;
+  pointer-events: none;
+}
+body.about-open.about-closing #viewport {
+  animation: aboutSlideBack 0.35s ease 0.4s both;
+  pointer-events: none;
+}
+
+
+.contact-link {
+  color: #000;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.contact-link:hover { opacity: 0.3; }
+
+.contact-row {
+  display: flex;
+  gap: 14px;
+}
+
+.contact-label {
+  min-width: 1.5em;
+}
+
+#about-bio {
+  font-size: 14.5px;
+  letter-spacing: 0.030em;
+  margin-top: 4px;
+  margin-bottom: 2px;
+  max-width: 50vw;
+}
+
+/* ─── Empty state ─────────────────────────────────────── */
+#empty-state {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 2;
+}
+
+#empty-state a { color: inherit; }
+
+/* ─── Mobile ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* Viewport: full width, spazio per meta (top) e controlli (bottom) */
+  #viewport {
+    right: 0;
+    top: 64px;
+    bottom: 185px;
+  }
+
+  .slide {
+    width: 100%;
+    padding: 8px 12px;
+  }
+
+  /* Meta → in alto a sinistra, stacked */
+  #meta-group {
+    position: fixed;
+    top: var(--pad);
+    left: var(--pad);
+    right: var(--pad);
+    display: block;
+    line-height: 1.2;
+  }
+  #meta-client,
+  #meta-title,
+  #meta-desc {
+    display: block;
+  }
+
+  /* Top bar (Index + Expand) → in basso a sinistra, colonna */
+  #top-bar {
+    top: auto;
+    right: auto;
+    left: var(--pad);
+    bottom: var(--pad);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  #gallery-index-btn,
+  #expand-btn {
+    line-height: 1.2;
+  }
+
+  /* Sidebar area → striscia orizzontale in basso */
+  #sidebar-area {
+    top: auto;
+    left: var(--pad);
+    right: var(--pad);
+    width: auto;
+    bottom: 48px;
+    height: auto;
+    flex-direction: column;
+  }
+
+  #sidebar-counter {
+    margin-bottom: 5px;
+    gap: 12px;
+  }
+
+  #cur, #tot { width: auto; }
+
+  #sidebar {
+    overflow-x: scroll;
+    overflow-y: hidden;
+    height: 64px;
+    width: 100%;
+  }
+
+  #sidebar-inner {
+    flex-direction: row;
+    height: 64px;
+    width: max-content;
+    gap: 2px;
+  }
+
+  .thumb {
+    height: 64px;
+    width: auto;
+    flex-shrink: 0;
+  }
+
+  .thumb img {
+    height: 100%;
+    width: auto;
+  }
+
+  /* Bottom bar (About + Alessio Keilty) → sopra la sidebar */
+  #bottom-bar {
+    bottom: 131px;
+  }
+
+  #bottom-row { margin-bottom: -1px; line-height: 1.2; }
+
+  /* About content su mobile: lascia spazio per scorrere */
+  .contact-row { line-height: 1.2; }
+
+  #about-bio {
+    font-size: 15.5px;
+    max-width: 90vw;
+  }
+
+  #author-name { font-size: 15.5px; margin-bottom: 0; }
+
+  /* Touch click feedback */
+  #gallery-index-btn,
+  #expand-btn,
+  #about-link,
+  #meta-back,
+  .thumb,
+  .col-thumb,
+  #index-title-btn,
+  #grid-close {
+    touch-action: manipulation;
+  }
+
+  #gallery-index-btn:active,
+  #expand-btn:active,
+  #about-link:active,
+  #meta-back:active,
+  #index-title-btn:active,
+  #grid-close:active { opacity: 0.3; }
+
+  .thumb:active img  { opacity: 0.8; }
+  .col-thumb:active img { opacity: 0.3; }
+
+  /* Mobile index overlay */
+  /* Top bar stays fixed and visible above the index overlay; only the
+     Expand/Back label crossfades, nothing slides during the animation.
+     Full-bleed white backdrop (edge to edge, down to the screen bottom)
+     keeps the labels readable over the photo grid. */
+  body.index-open #top-bar {
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 60;
+    background: #fff;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 7px var(--pad) var(--pad);
+  }
+
+  #grid-overlay {
+    display: flex;
+    flex-direction: column;
+  }
+  #grid-overlay[hidden] { display: none !important; }
+
+  /* Header duplicated inside the overlay is unused on mobile: the fixed
+     top bar already shows the title and the Expand/Back toggle. */
+  #index-header {
+    display: none;
+  }
+
+  #index-cols {
+    position: relative;
+    inset: auto;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    align-items: stretch;
+    padding: var(--pad);
+    /* Clears the fixed bottom bar (Index/Expand) so the last project isn't
+       hidden underneath it. */
+    padding-bottom: 56px;
+    gap: 3px;
+  }
+
+  .col-unit {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .project-col {
+    display: contents;
+  }
+
+  /* The fixed scroll/clip boundary: stays put so thumbnails disappear
+     behind the page margins while scrolling, same as every other project.
+     The actual flex row layout lives on .col-images-inner instead, since
+     that's the element the elastic bounce transforms when a project has
+     too few photos to scroll for real. */
+  .col-images {
+    display: block;
+    height: auto;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    width: 100%;
+  }
+
+  .col-images-inner {
+    display: inline-flex;
+    flex-direction: row;
+    gap: 2px;
+  }
+
+  .col-images::-webkit-scrollbar { display: none; }
+
+  .col-thumb {
+    flex-direction: column;
+    height: auto;
+    width: auto;
+    flex-shrink: 0;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .col-thumb img {
+    height: 64px;
+    width: auto;
+    flex: none;
+    display: block;
+  }
+
+  /* Progressive number below each image — scrolls with the filmstrip.
+     Digits read taller than lowercase text at the same font-size (no
+     ascenders/descenders), so size down slightly to visually match
+     "Index of the Photographic Gallery". */
+  .col-num {
+    display: block;
+    font-size: 10.2px;
+    line-height: 1.2;
+  }
+
+  /* Total count removed on mobile */
+  .col-gap,
+  .col-total {
+    display: none;
+  }
+
+  /* Title moved inline, at the end of the filmstrip, top-aligned with the photos */
+  .col-title-inline {
+    align-self: flex-start;
+    flex-shrink: 0;
+    max-width: 50%;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.2;
+  }
+
+  /* Project meta — same line spacing as header text (title now shown inline instead) */
+  .col-meta {
+    order: 2;
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: 1.2;
+    align-self: stretch;
+    width: auto;
+  }
+
+  .col-meta .col-title,
+  .col-meta .col-client,
+  .col-meta .col-desc {
+    display: none;
+  }
+}
