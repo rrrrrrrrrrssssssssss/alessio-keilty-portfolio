@@ -619,7 +619,7 @@ function closeGridVisual(keepAbout = false) {
   }
   gridOverlay.classList.remove('open');
   document.body.classList.remove('index-open');
-  crossFadeLabel(expandBtn, 'Expand');
+  crossFadeLabel(expandBtn, 'Back');
   gridOverlay.addEventListener('transitionend', () => {
     gridOverlay.setAttribute('hidden', '');
   }, { once: true });
