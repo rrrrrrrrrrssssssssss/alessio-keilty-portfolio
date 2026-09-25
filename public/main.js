@@ -464,7 +464,18 @@ function bindEvents() {
     if (e.key === 'Escape') { closeGrid(); closeAbout(); }
   });
 
-  // expandBtn opens the index; galleryIndexBtn ("Viewer") is a label — no action
+  // expandBtn opens/closes the index. galleryIndexBtn is normally a label
+  // but becomes tappable on mobile when the index is open ("Index overview"
+  // → close index) or when about was opened from the index ("Back to Index
+  // overview" → close about and return to index via history).
+  galleryIndexBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (document.body.classList.contains('index-open') && window.innerWidth <= 768) {
+      closeGrid();
+    } else if (document.body.classList.contains('about-from-index') && window.innerWidth <= 768) {
+      closeAbout();
+    }
+  });
   expandBtn.addEventListener('click', e => {
     e.stopPropagation();
     document.body.classList.contains('index-open') ? closeGrid() : openGrid();
@@ -474,8 +485,10 @@ function bindEvents() {
     if (document.body.classList.contains('about-open')) {
       closeAbout();
     } else if (gridOverlay.classList.contains('open')) {
-      // Index → About directly: on mobile hide the grid instantly so the
-      // viewer never shows through the sliding overlay before about opens.
+      // Index → About directly: hide grid instantly on mobile (no viewer
+      // flash), mark about-from-index so the top bar shows "Back to Index
+      // overview" and the viewport skip animation applies.
+      document.body.classList.add('about-from-index');
       closeGridVisual(true, window.innerWidth <= 768);
       if (location.hash !== '#about') history.pushState(null, '', '#about');
       openAboutVisual();
@@ -495,7 +508,7 @@ function bindEvents() {
       // Index → About directly: a single history transition (push '#about'
       // on top of '#index'), not "go back, then push" — calling history.back()
       // and pushState right after it would race against each other.
-      // On mobile: hide grid instantly so the viewer never flashes through.
+      document.body.classList.add('about-from-index');
       closeGridVisual(true, window.innerWidth <= 768);
       if (location.hash !== '#about') history.pushState(null, '', '#about');
       openAboutVisual();
@@ -716,6 +729,11 @@ function openAboutVisual() {
   crossFadeLabel(aboutLink, 'Back');
   showMetaBack();
   document.body.classList.add('about-open');
+  // When coming from the index, show "Back to Index overview" in the top bar
+  // (galleryIndexBtn) so the user knows they can return to the index.
+  if (document.body.classList.contains('about-from-index') && window.innerWidth <= 768) {
+    crossFadeLabel(galleryIndexBtn, 'Back to Index overview');
+  }
 }
 
 function closeAboutVisual() {
@@ -723,6 +741,13 @@ function closeAboutVisual() {
 
   closeAboutTimers.forEach(clearTimeout);
   closeAboutTimers = [];
+
+  // Clear the from-index context immediately so the CSS viewport suppression
+  // lifts before the slide-back animation, and restore the gallery label.
+  if (document.body.classList.contains('about-from-index')) {
+    document.body.classList.remove('about-from-index');
+    if (window.innerWidth <= 768) crossFadeLabel(galleryIndexBtn, 'Viewer');
+  }
 
   crossFadeLabel(aboutLink, 'About');
   hideMetaBack();

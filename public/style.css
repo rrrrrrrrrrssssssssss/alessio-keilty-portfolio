@@ -502,6 +502,16 @@ body.about-open.about-closing #viewport {
   pointer-events: none;
 }
 
+/* When coming from index → about, the viewport was already off-screen to
+   the left (index-open). Removing index-open would transition it back and
+   the aboutSlideOut animation would then kick in — the user sees the photo
+   flash. Suppress both by instantly positioning the viewport off-screen. */
+body.about-open.about-from-index:not(.about-closing) #viewport {
+  animation: none;
+  transform: translateX(100vw);
+  transition: none;
+}
+
 
 .contact-link {
   color: #000;
@@ -633,6 +643,7 @@ body.about-open.about-closing #viewport {
   /* Bottom bar (About + Alessio Keilty) → sopra la sidebar */
   #bottom-bar {
     bottom: 131px;
+    transition: opacity 0.3s ease, bottom 0.35s ease;
   }
 
   #bottom-row { margin-bottom: -1px; line-height: 1.2; }
@@ -695,7 +706,7 @@ body.about-open.about-closing #viewport {
     bottom: 41px;
     left: 0;
     right: 0;
-    padding: 0 var(--pad);
+    padding: 6px var(--pad) 0;
     background: #fff;
     z-index: 60;
   }
@@ -703,6 +714,18 @@ body.about-open.about-closing #viewport {
   body.index-open #about-content,
   body.index-open #bottom-row {
     display: none;
+  }
+
+  /* "Index overview" label becomes tappable on mobile when index is open */
+  body.index-open #gallery-index-btn {
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  /* "Back to Index overview" label is tappable when about was opened from index */
+  body.about-from-index #gallery-index-btn {
+    cursor: pointer;
+    pointer-events: auto;
   }
 
   #grid-overlay {
