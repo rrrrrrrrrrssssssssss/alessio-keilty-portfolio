@@ -717,10 +717,11 @@ body.about-open.about-from-index:not(.about-closing) #viewport {
     display: none;
   }
 
-  /* Padding so the last photos in each column don't hide behind the
-     "Alessio Keilty" + button-bar area, preventing accidental about opens
-     when the user taps a photo near the bottom of the index. */
-  body.index-open .col-images {
+  /* Extend the scroll container's bottom clearance so the last project's
+     strip doesn't slip under the "Alessio Keilty" bar (sits at ~65px from
+     screen bottom above the regular 56px button-bar clearance). Prevents
+     accidental about-opens when tapping photos near the bottom of the list. */
+  body.index-open #index-cols {
     padding-bottom: 80px;
   }
 
