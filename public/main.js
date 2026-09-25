@@ -76,26 +76,6 @@ async function init() {
   // Direct/shared link landing on #index or #about
   if (location.hash === '#index') openGridVisual();
   else if (location.hash === '#about') openAboutVisual();
-  // Intro: flash the index for 500ms then animate to the main view
-  else {
-    document.body.classList.add('intro-instant');
-    indexCols.scrollLeft = 0;
-    indexCols.scrollTop  = 0;
-    gridOverlay.removeAttribute('hidden');
-    gridOverlay.classList.add('open');
-    document.body.classList.add('index-open');
-    document.body.offsetHeight; // flush — apply all the above instantly
-    document.body.classList.remove('intro-instant');
-    setTimeout(() => {
-      if (window.innerWidth <= 768) {
-        gridOverlay.classList.add('intro-close');
-        gridOverlay.addEventListener('transitionend', () => {
-          gridOverlay.classList.remove('intro-close');
-        }, { once: true });
-      }
-      closeGridVisual();
-    }, 500);
-  }
 }
 
 /* ─── Carousel ───────────────────────────────────────────────────── */

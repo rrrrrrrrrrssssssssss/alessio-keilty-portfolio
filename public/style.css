@@ -247,10 +247,6 @@ body.about-open #meta-desc {
   pointer-events: auto;
 }
 
-/* ─── Suppress all transitions during the intro instant-open ──── */
-.intro-instant,
-.intro-instant * { transition: none !important; animation: none !important; }
-
 /* ─── Slide-out transitions for main content ──────────── */
 #viewport,
 #sidebar-area {
@@ -289,7 +285,6 @@ body.index-open #bottom-bar {
   transform: translateX(100%);
   transition: transform 0.5s ease;
 }
-#grid-overlay.intro-close { transition-duration: 0.2s; }
 
 #grid-overlay.open {
   transform: translateX(0);
