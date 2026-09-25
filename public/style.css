@@ -286,9 +286,10 @@ body.index-open #bottom-bar {
     padding: var(--pad);
     background: #fff;
   }
-  /* about-content is opacity:0 but still in flow — collapse it so the
-     bar only wraps "About" + "Alessio Keilty" when index is open */
-  body.index-open #about-content {
+  /* collapse invisible about-content and hide bottom-row so the bar
+     wraps only "Alessio Keilty" when index is open */
+  body.index-open #about-content,
+  body.index-open #bottom-row {
     height: 0;
     overflow: hidden;
     margin: 0;
