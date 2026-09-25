@@ -280,6 +280,11 @@ body.index-open #bottom-bar {
     opacity: 1;
     pointer-events: auto;
     z-index: 60;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: var(--pad);
+    background: #fff;
   }
 }
 
