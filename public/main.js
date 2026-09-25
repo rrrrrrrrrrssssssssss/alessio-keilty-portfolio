@@ -597,7 +597,8 @@ function openGridVisual() {
   gridOverlay.offsetHeight; // force reflow so transition fires from translateX(100%)
   gridOverlay.classList.add('open');
   document.body.classList.add('index-open');
-  crossFadeLabel(expandBtn, 'Back');
+  crossFadeLabel(expandBtn, 'Open viewer');
+  if (window.innerWidth <= 768) crossFadeLabel(galleryIndexBtn, 'Index overview');
 }
 
 function closeGridVisual(keepAbout = false) {
@@ -615,6 +616,7 @@ function closeGridVisual(keepAbout = false) {
   gridOverlay.classList.remove('open');
   document.body.classList.remove('index-open');
   crossFadeLabel(expandBtn, 'Open index overview');
+  if (window.innerWidth <= 768) crossFadeLabel(galleryIndexBtn, 'Viewer');
   gridOverlay.addEventListener('transitionend', () => {
     gridOverlay.setAttribute('hidden', '');
   }, { once: true });

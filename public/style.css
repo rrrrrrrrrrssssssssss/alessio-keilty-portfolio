@@ -685,6 +685,30 @@ body.about-open.about-closing #viewport {
     padding: 7px var(--pad) var(--pad);
   }
 
+  /* "Alessio Keilty" slides above the button bar when index opens.
+     #bottom-bar has opacity:0 globally, so we must explicitly override
+     it here (parent opacity always composites children, no child override
+     can fight it). Only #author-name remains visible — About and meta
+     are collapsed via display:none below. */
+  #bottom-bar {
+    transition: opacity 0.3s ease, bottom 0.35s ease;
+  }
+
+  body.index-open #bottom-bar {
+    opacity: 1;
+    bottom: 48px;
+    left: 0;
+    right: 0;
+    padding: 6px var(--pad) 0;
+    background: #fff;
+    z-index: 60;
+  }
+
+  body.index-open #about-content,
+  body.index-open #bottom-row {
+    display: none;
+  }
+
   #grid-overlay {
     display: flex;
     flex-direction: column;
