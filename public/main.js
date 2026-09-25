@@ -474,8 +474,9 @@ function bindEvents() {
     if (document.body.classList.contains('about-open')) {
       closeAbout();
     } else if (gridOverlay.classList.contains('open')) {
-      // Index → About directly: close grid first, then open about
-      closeGridVisual(true);
+      // Index → About directly: on mobile hide the grid instantly so the
+      // viewer never shows through the sliding overlay before about opens.
+      closeGridVisual(true, window.innerWidth <= 768);
       if (location.hash !== '#about') history.pushState(null, '', '#about');
       openAboutVisual();
     } else {
@@ -494,7 +495,8 @@ function bindEvents() {
       // Index → About directly: a single history transition (push '#about'
       // on top of '#index'), not "go back, then push" — calling history.back()
       // and pushState right after it would race against each other.
-      closeGridVisual(true);
+      // On mobile: hide grid instantly so the viewer never flashes through.
+      closeGridVisual(true, window.innerWidth <= 768);
       if (location.hash !== '#about') history.pushState(null, '', '#about');
       openAboutVisual();
     } else {
@@ -601,7 +603,7 @@ function openGridVisual() {
   if (window.innerWidth <= 768) crossFadeLabel(galleryIndexBtn, 'Index overview');
 }
 
-function closeGridVisual(keepAbout = false) {
+function closeGridVisual(keepAbout = false, instant = false) {
   if (!keepAbout && document.body.classList.contains('about-open')) {
     // Grid (z-index 50) covers everything — reset About state silently with no animations.
     // Calling closeAboutVisual() here would trigger its viewport transitions and fight the grid slide-out.
@@ -617,9 +619,15 @@ function closeGridVisual(keepAbout = false) {
   document.body.classList.remove('index-open');
   crossFadeLabel(expandBtn, 'Open index overview');
   if (window.innerWidth <= 768) crossFadeLabel(galleryIndexBtn, 'Viewer');
-  gridOverlay.addEventListener('transitionend', () => {
+  if (instant) {
+    // Skip the slide-out animation (e.g. index → about on mobile) so the
+    // viewer never flashes through the grid as it moves off-screen.
     gridOverlay.setAttribute('hidden', '');
-  }, { once: true });
+  } else {
+    gridOverlay.addEventListener('transitionend', () => {
+      gridOverlay.setAttribute('hidden', '');
+    }, { once: true });
+  }
 }
 
 function crossFadeLabel(el, newText) {
