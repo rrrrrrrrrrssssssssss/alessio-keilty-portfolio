@@ -73,9 +73,9 @@ async function init() {
   goTo(0);
   bindEvents();
 
-  // Direct/shared link landing on #index or #about
-  if (location.hash === '#index') openGridVisual();
-  else if (location.hash === '#about') openAboutVisual();
+  // Index is the default landing page; #about links open about directly
+  if (location.hash === '#about') openAboutVisual();
+  else openGrid(); // covers #index and clean landing
 }
 
 /* ─── Carousel ───────────────────────────────────────────────────── */
