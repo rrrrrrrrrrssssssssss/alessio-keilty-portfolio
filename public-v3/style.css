@@ -327,30 +327,14 @@ body.index-open #bottom-bar {
 #grid-close:hover { opacity: 0.3; }
 
 #index-author {
-  margin-left: auto;
-  color: #000;
-  user-select: none;
-}
-
-#index-prev,
-#index-next {
-  cursor: pointer;
-  color: #000;
-  transition: opacity 0.2s;
-  user-select: none;
-  pointer-events: auto;
-}
-
-#index-prev:hover,
-#index-next:hover,
-#index-prev:active,
-#index-next:active { opacity: 0.3; }
-
-#index-prev.nav-disabled,
-#index-next.nav-disabled {
-  opacity: 0.3;
-  cursor: default;
+  position: fixed;
+  left: var(--pad);
+  font-size: 14.5px;
+  letter-spacing: 0.030em;
+  opacity: 0;
   pointer-events: none;
+  z-index: 55;
+  transition: top 0.5s ease, opacity 0.3s ease;
 }
 
 #index-cols {
@@ -712,6 +696,8 @@ body.about-open.about-closing #viewport {
     padding-bottom: 56px;
     gap: 3px;
   }
+
+  #index-author { display: none; }
 
   .col-unit {
     flex-direction: column;

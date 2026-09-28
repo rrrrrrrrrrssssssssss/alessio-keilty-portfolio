@@ -8,30 +8,15 @@
 </head>
 <body>
   <div id="app">
-
-    <!-- Top right: Index | Expand -->
     <div id="top-bar">
       <span id="gallery-index-btn" role="button" tabindex="0">Index overview</span>
       <span id="expand-btn" role="button" tabindex="0">Expand</span>
     </div>
-
-    <!-- Main carousel -->
-    <div id="viewport">
-      <div id="track"></div>
-    </div>
-
-    <!-- Sidebar: counter sopra + filmstrip -->
+    <div id="viewport"><div id="track"></div></div>
     <div id="sidebar-area">
-      <div id="sidebar-counter">
-        <span id="cur">01</span>
-        <span id="tot">/00</span>
-      </div>
-      <div id="sidebar">
-        <div id="sidebar-inner"></div>
-      </div>
+      <div id="sidebar-counter"><span id="cur">01</span><span id="tot">/00</span></div>
+      <div id="sidebar"><div id="sidebar-inner"></div></div>
     </div>
-
-    <!-- Bottom bar -->
     <div id="bottom-bar">
       <div id="about-content">
         <div class="contact-row"><span class="contact-label">M</span><a id="about-email" class="contact-link"></a></div>
@@ -49,24 +34,17 @@
       </div>
       <div id="author-name">Alessio Keilty</div>
     </div>
-
-    <!-- Index overlay -->
     <div id="grid-overlay" hidden>
       <div id="index-header">
         <span id="index-title-btn">Index overview</span>
         <span id="grid-close" role="button" tabindex="0">Back</span>
-        <span id="index-author">Alessio Keilty</span>
-        <span id="index-prev" role="button" tabindex="0">Prev</span>
-        <span id="index-next" role="button" tabindex="0">Next</span>
       </div>
       <div id="index-cols"></div>
     </div>
-
-    <!-- Empty state -->
+    <div id="index-author">Alessio Keilty</div>
     <div id="empty-state" hidden>
       <p>Nessun contenuto.<br><a href="/admin">Vai all'admin</a> per aggiungere progetti.</p>
     </div>
-
   </div>
   <script src="/3/main.js"></script>
 </body>
