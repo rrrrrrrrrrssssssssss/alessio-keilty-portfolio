@@ -653,19 +653,17 @@ function openGridVisual() {
     indexAuthor.style.transition = '';
     indexAuthor.style.top = targetTop + 'px';
 
-    // Snap index-nav 6px below index-author (same as #about-content margin-bottom), animate together
-    const navTargetTop = targetTop + indexAuthor.offsetHeight + 6;
+    // Snap index-nav 3px below index-author (same gap as Index overview → Alessio Keilty), animate together
+    const navTargetTop = targetTop + indexAuthor.offsetHeight + 3;
     indexNav.style.transition = 'none';
-    indexNav.style.top = (authorRect.top + authorNameEl.offsetHeight + 6) + 'px';
+    indexNav.style.top = (authorRect.top + authorNameEl.offsetHeight + 3) + 'px';
     indexNav.style.opacity = '1';
     indexNav.getBoundingClientRect(); // snap
     indexNav.style.transition = '';
     indexNav.style.top = navTargetTop + 'px';
 
-    // Push image content below the nav buttons with a consistent gap
-    const navBottom = navTargetTop + indexNav.offsetHeight;
-    const gap = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 28;
-    indexCols.style.paddingTop = (navBottom + gap) + 'px';
+    // Push image content 3px below nav buttons (same gap throughout)
+    indexCols.style.paddingTop = (navTargetTop + indexNav.offsetHeight + 3) + 'px';
 
     updateIndexNav();
   }
