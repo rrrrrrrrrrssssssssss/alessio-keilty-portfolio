@@ -645,9 +645,7 @@ indexNext.addEventListener('click', () => {
 
 indexCols.addEventListener('scroll', updateIndexNav, { passive: true });
 
-[indexOnviewClient, indexOnviewTitle, indexOnviewDesc].forEach(el => {
-  el.addEventListener('click', () => closeGrid());
-});
+indexOnview.addEventListener('click', () => closeGrid());
 
 function openGridVisual() {
   indexCols.scrollLeft = 0;
@@ -686,6 +684,7 @@ function openGridVisual() {
     updateIndexNav();
     updateIndexOnview();
     indexOnview.style.opacity = '1';
+    indexOnview.style.pointerEvents = 'auto';
   }
 
   gridOverlay.classList.add('open');
@@ -709,6 +708,7 @@ function closeGridVisual(keepAbout = false) {
   indexAuthor.style.opacity = '0';
   indexNav.style.opacity = '0';
   indexOnview.style.opacity = '0';
+  indexOnview.style.pointerEvents = '';
   indexCols.style.paddingTop = '';
   authorNameEl.style.opacity = '';
   authorNameEl.style.transition = '';

@@ -357,38 +357,33 @@ body.index-open #bottom-bar {
   align-items: baseline;
   opacity: 0;
   pointer-events: none;
+  cursor: pointer;
   z-index: 55;
   transition: opacity 0.3s ease;
 }
 
 #index-onview-label {
   opacity: 0.3;
-  pointer-events: auto;
   transition: opacity 0.2s;
-}
-
-@media (hover: hover) {
-  #index-onview-label:hover { opacity: 1; }
 }
 
 #index-onview-client,
 #index-onview-title,
 #index-onview-desc {
-  cursor: pointer;
-  pointer-events: auto;
-  color: #000;
   transition: opacity 0.2s;
 }
 
 @media (hover: hover) {
-  #index-onview-client:hover,
-  #index-onview-title:hover,
-  #index-onview-desc:hover { opacity: 0.3; }
+  #index-onview:hover #index-onview-label { opacity: 1; }
+  #index-onview:hover #index-onview-client,
+  #index-onview:hover #index-onview-title,
+  #index-onview:hover #index-onview-desc { opacity: 0.3; }
 }
 
-#index-onview-client:active,
-#index-onview-title:active,
-#index-onview-desc:active { opacity: 0.3; }
+#index-onview:active #index-onview-label { opacity: 1; }
+#index-onview:active #index-onview-client,
+#index-onview:active #index-onview-title,
+#index-onview:active #index-onview-desc { opacity: 0.3; }
 
 #index-prev,
 #index-next {
