@@ -25,6 +25,9 @@ const aboutContent = document.getElementById('about-content');
 const authorNameEl = document.getElementById('author-name');
 const indexTitleBtn= document.getElementById('index-title-btn');
 const indexAuthor  = document.getElementById('index-author');
+const indexNav     = document.getElementById('index-nav');
+const indexPrev    = document.getElementById('index-prev');
+const indexNext    = document.getElementById('index-next');
 
 /* ─── Image URL helpers ──────────────────────────────────────────── */
 // Vercel Blob images are stored as full URLs; legacy images use /uploads/.
@@ -589,27 +592,77 @@ window.addEventListener('popstate', () => {
   }
 });
 
+/* ─── Index Prev/Next navigation (desktop only) ──────────────────── */
+function updateIndexNav() {
+  const units = indexCols.querySelectorAll('.col-unit');
+  if (!units.length) return;
+  const pad = parseInt(getComputedStyle(indexCols).paddingLeft) || 14;
+  let current = 0;
+  for (let i = 0; i < units.length; i++) {
+    if (units[i].offsetLeft - pad <= indexCols.scrollLeft + 1) current = i;
+  }
+  indexPrev.classList.toggle('nav-disabled', current === 0);
+  indexNext.classList.toggle('nav-disabled', current >= units.length - 1);
+}
+
+indexPrev.addEventListener('click', () => {
+  const units = indexCols.querySelectorAll('.col-unit');
+  if (!units.length) return;
+  const pad = parseInt(getComputedStyle(indexCols).paddingLeft) || 14;
+  let current = 0;
+  for (let i = 0; i < units.length; i++) {
+    if (units[i].offsetLeft - pad <= indexCols.scrollLeft + 1) current = i;
+  }
+  const target = Math.max(0, current - 1);
+  indexCols.scrollTo({ left: target === 0 ? 0 : units[target].offsetLeft - pad, behavior: 'smooth' });
+});
+
+indexNext.addEventListener('click', () => {
+  const units = indexCols.querySelectorAll('.col-unit');
+  if (!units.length) return;
+  const pad = parseInt(getComputedStyle(indexCols).paddingLeft) || 14;
+  let current = 0;
+  for (let i = 0; i < units.length; i++) {
+    if (units[i].offsetLeft - pad <= indexCols.scrollLeft + 1) current = i;
+  }
+  const target = Math.min(units.length - 1, current + 1);
+  indexCols.scrollTo({ left: units[target].offsetLeft - pad, behavior: 'smooth' });
+});
+
+indexCols.addEventListener('scroll', updateIndexNav, { passive: true });
+
 function openGridVisual() {
   indexCols.scrollLeft = 0;
   indexCols.scrollTop = 0;
   gridOverlay.removeAttribute('hidden');
   gridOverlay.offsetHeight; // force reflow: makes overlay measurable and ensures transition starts from translateX(100%)
 
-  // FLIP: animate #author-name from its viewer position to below "Index overview"
+  // FLIP: animate #author-name and #index-nav from viewer position into index header area
   if (window.innerWidth > 768) {
     const pad = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--pad')) || 14;
-    const targetTop = pad + indexTitleBtn.offsetHeight + 3; // 3px = same gap as between About and Alessio Keilty
+    const targetTop = pad + indexTitleBtn.offsetHeight + 3; // 3px gap below "Index overview"
     const authorRect = authorNameEl.getBoundingClientRect();
 
+    // Snap index-author to viewer position, then animate to target
     indexAuthor.style.transition = 'none';
     indexAuthor.style.top = authorRect.top + 'px';
     indexAuthor.style.opacity = '1';
     authorNameEl.style.transition = 'none';
     authorNameEl.style.opacity = '0';
     indexAuthor.getBoundingClientRect(); // snap
-
     indexAuthor.style.transition = '';
     indexAuthor.style.top = targetTop + 'px';
+
+    // Snap index-nav 6px below index-author (same as #about-content margin-bottom), animate together
+    const navTargetTop = targetTop + indexAuthor.offsetHeight + 6;
+    indexNav.style.transition = 'none';
+    indexNav.style.top = (authorRect.top + authorNameEl.offsetHeight + 6) + 'px';
+    indexNav.style.opacity = '1';
+    indexNav.getBoundingClientRect(); // snap
+    indexNav.style.transition = '';
+    indexNav.style.top = navTargetTop + 'px';
+
+    updateIndexNav();
   }
 
   gridOverlay.classList.add('open');
@@ -629,8 +682,9 @@ function closeGridVisual(keepAbout = false) {
     aboutLink.style.opacity = '';
     metaBack.style.cssText = '';
   }
-  // Fade out the flying label, restore the original
+  // Fade out the flying elements, restore the original
   indexAuthor.style.opacity = '0';
+  indexNav.style.opacity = '0';
   authorNameEl.style.opacity = '';
   authorNameEl.style.transition = '';
 
