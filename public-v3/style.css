@@ -309,7 +309,6 @@ body.index-open #bottom-bar {
   right: var(--pad);
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
   gap: var(--gap);
   pointer-events: none;
   z-index: 1;
