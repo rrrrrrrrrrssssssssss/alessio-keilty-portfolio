@@ -22,6 +22,8 @@ const expandBtn    = document.getElementById('expand-btn');
 const galleryIndexBtn = document.getElementById('gallery-index-btn');
 const metaBack     = document.getElementById('meta-back');
 const aboutContent = document.getElementById('about-content');
+const indexPrev    = document.getElementById('index-prev');
+const indexNext    = document.getElementById('index-next');
 
 /* ─── Image URL helpers ──────────────────────────────────────────── */
 // Vercel Blob images are stored as full URLs; legacy images use /uploads/.
@@ -586,6 +588,45 @@ window.addEventListener('popstate', () => {
   }
 });
 
+/* ─── Index Prev/Next navigation (desktop only) ──────────────────── */
+function updateIndexNav() {
+  const units = indexCols.querySelectorAll('.col-unit');
+  if (!units.length) return;
+  const pad = parseInt(getComputedStyle(indexCols).paddingLeft) || 14;
+  let current = 0;
+  for (let i = 0; i < units.length; i++) {
+    if (units[i].offsetLeft - pad <= indexCols.scrollLeft + 1) current = i;
+  }
+  indexPrev.classList.toggle('nav-disabled', current === 0);
+  indexNext.classList.toggle('nav-disabled', current >= units.length - 1);
+}
+
+indexPrev.addEventListener('click', () => {
+  const units = indexCols.querySelectorAll('.col-unit');
+  if (!units.length) return;
+  const pad = parseInt(getComputedStyle(indexCols).paddingLeft) || 14;
+  let current = 0;
+  for (let i = 0; i < units.length; i++) {
+    if (units[i].offsetLeft - pad <= indexCols.scrollLeft + 1) current = i;
+  }
+  const target = Math.max(0, current - 1);
+  indexCols.scrollTo({ left: target === 0 ? 0 : units[target].offsetLeft - pad, behavior: 'smooth' });
+});
+
+indexNext.addEventListener('click', () => {
+  const units = indexCols.querySelectorAll('.col-unit');
+  if (!units.length) return;
+  const pad = parseInt(getComputedStyle(indexCols).paddingLeft) || 14;
+  let current = 0;
+  for (let i = 0; i < units.length; i++) {
+    if (units[i].offsetLeft - pad <= indexCols.scrollLeft + 1) current = i;
+  }
+  const target = Math.min(units.length - 1, current + 1);
+  indexCols.scrollTo({ left: units[target].offsetLeft - pad, behavior: 'smooth' });
+});
+
+indexCols.addEventListener('scroll', updateIndexNav, { passive: true });
+
 function openGridVisual() {
   indexCols.scrollLeft = 0;
   indexCols.scrollTop = 0;
@@ -594,6 +635,7 @@ function openGridVisual() {
   gridOverlay.classList.add('open');
   document.body.classList.add('index-open');
   crossFadeLabel(expandBtn, 'Back');
+  updateIndexNav();
 }
 
 function closeGridVisual(keepAbout = false) {
