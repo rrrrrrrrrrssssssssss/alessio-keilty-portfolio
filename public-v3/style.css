@@ -43,13 +43,7 @@ html, body {
   z-index: 30;
 }
 
-#gallery-index-btn {
-  color: #000;
-  user-select: none;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
+#gallery-index-btn,
 #expand-btn {
   cursor: pointer;
   color: #000;
@@ -58,8 +52,10 @@ html, body {
 }
 
 @media (hover: hover) {
-  #gallery-index-btn:hover { opacity: 0.3; }
-  #expand-btn:hover { opacity: 0.3; }
+  #top-bar:has(:hover) #gallery-index-btn,
+  #top-bar:has(:hover) #expand-btn {
+    opacity: 0.3;
+  }
 }
 
 /* ─── Carousel viewport ───────────────────────────────── */
@@ -279,27 +275,6 @@ body.index-open #bottom-bar {
   pointer-events: none;
 }
 
-@media (min-width: 769px) {
-  body.index-open #bottom-bar {
-    opacity: 1;
-    pointer-events: auto;
-    z-index: 60;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    padding: var(--pad);
-    background: #fff;
-  }
-  /* collapse invisible about-content and hide bottom-row so the bar
-     wraps only "Alessio Keilty" when index is open */
-  body.index-open #about-content,
-  body.index-open #bottom-row {
-    height: 0;
-    overflow: hidden;
-    margin: 0;
-  }
-}
-
 
 /* ─── Index overlay ───────────────────────────────────── */
 #grid-overlay {
@@ -339,12 +314,7 @@ body.index-open #bottom-bar {
   z-index: 1;
 }
 
-#index-title-btn {
-  color: #000;
-  user-select: none;
-  pointer-events: none;
-}
-
+#index-title-btn,
 #grid-close {
   cursor: pointer;
   color: #000;
@@ -353,6 +323,7 @@ body.index-open #bottom-bar {
   pointer-events: auto;
 }
 
+#index-title-btn:hover,
 #grid-close:hover { opacity: 0.3; }
 
 #index-cols {
@@ -503,16 +474,6 @@ body.about-open.about-closing #viewport {
   pointer-events: none;
 }
 
-/* When coming from index → about, the viewport was already off-screen to
-   the left (index-open). Removing index-open would transition it back and
-   the aboutSlideOut animation would then kick in — the user sees the photo
-   flash. Suppress both by instantly positioning the viewport off-screen. */
-body.about-open.about-from-index:not(.about-closing) #viewport {
-  animation: none;
-  transform: translateX(100vw);
-  transition: none;
-}
-
 
 .contact-link {
   color: #000;
@@ -644,7 +605,6 @@ body.about-open.about-from-index:not(.about-closing) #viewport {
   /* Bottom bar (About + Alessio Keilty) → sopra la sidebar */
   #bottom-bar {
     bottom: 131px;
-    transition: opacity 0.3s ease, bottom 0.35s ease;
   }
 
   #bottom-row { margin-bottom: -1px; line-height: 1.2; }
@@ -695,34 +655,6 @@ body.about-open.about-from-index:not(.about-closing) #viewport {
     right: 0;
     bottom: 0;
     padding: 7px var(--pad) var(--pad);
-  }
-
-  /* "Alessio Keilty" fades in above the button bar (same opacity transition
-     as the rest of the interface). bottom:41px places the text flush
-     against "Index overview", matching the viewer gap between the project
-     numbers and Alessio Keilty. The bar bottom overlaps the top-bar by
-     ~6px so both white backgrounds merge with no visible seam. */
-  body.index-open #bottom-bar {
-    opacity: 1;
-    bottom: 41px;
-    left: 0;
-    right: 0;
-    padding: 6px var(--pad) 0;
-    background: #fff;
-    z-index: 60;
-  }
-
-  body.index-open #about-content,
-  body.index-open #bottom-row {
-    display: none;
-  }
-
-  /* Extend the scroll container's bottom clearance so the last project's
-     strip doesn't slip under the "Alessio Keilty" bar (sits at ~65px from
-     screen bottom above the regular 56px button-bar clearance). Prevents
-     accidental about-opens when tapping photos near the bottom of the list. */
-  body.index-open #index-cols {
-    padding-bottom: 80px;
   }
 
   #grid-overlay {

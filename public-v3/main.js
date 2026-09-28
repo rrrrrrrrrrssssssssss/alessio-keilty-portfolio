@@ -73,9 +73,9 @@ async function init() {
   goTo(0);
   bindEvents();
 
-  // Index is the default landing page; #about links open about directly
-  if (location.hash === '#about') openAboutVisual();
-  else openGrid(); // covers #index and clean landing
+  // Direct/shared link landing on #index or #about
+  if (location.hash === '#index') openGridVisual();
+  else if (location.hash === '#about') openAboutVisual();
 }
 
 /* ─── Carousel ───────────────────────────────────────────────────── */
@@ -464,42 +464,24 @@ function bindEvents() {
     if (e.key === 'Escape') { closeGrid(); closeAbout(); }
   });
 
-  // galleryIndexBtn:
-  //   viewer state  → "Viewer"           → opens index
-  //   index open    → "Index overview"   → closes index (mobile only)
-  //   about open    → "Back to"          → opens index (via openGrid)
-  galleryIndexBtn.addEventListener('click', e => {
-    e.stopPropagation();
-    if (document.body.classList.contains('index-open')) {
-      if (window.innerWidth <= 768) closeGrid();
-    } else {
-      openGrid(); // viewer or about → go to index
-    }
-  });
+  // Expand apre/chiude la griglia (toggle), l'indice la apre soltanto
   expandBtn.addEventListener('click', e => {
     e.stopPropagation();
     document.body.classList.contains('index-open') ? closeGrid() : openGrid();
   });
+  galleryIndexBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    document.body.classList.contains('index-open') ? closeGrid() : openGrid();
+    galleryIndexBtn.style.opacity = '1';
+  });
   aboutLink.addEventListener('click', e => {
     e.stopPropagation();
-    if (document.body.classList.contains('about-open')) {
-      closeAbout();
-    } else if (gridOverlay.classList.contains('open')) {
-      // Index → About directly: hide grid instantly on mobile (no viewer
-      // flash), mark about-from-index so the top bar shows "Back to Index
-      // overview" and the viewport skip animation applies.
-      document.body.classList.add('about-from-index');
-      closeGridVisual(true, window.innerWidth <= 768);
-      if (location.hash !== '#about') history.pushState(null, '', '#about');
-      openAboutVisual();
-    } else {
-      openAbout();
-    }
+    document.body.classList.contains('about-open') ? closeAbout() : openAbout();
   });
   metaClient.addEventListener('click', closeAbout);
   metaTitle.addEventListener('click', closeAbout);
   metaDesc.addEventListener('click', closeAbout);
-  document.getElementById('index-title-btn').addEventListener('click', () => {}); // stays on index
+  document.getElementById('index-title-btn').addEventListener('click', () => closeGrid(true));
   document.getElementById('grid-close').addEventListener('click', () => closeGrid(true));
   document.getElementById('author-name').addEventListener('click', () => {
     if (document.body.classList.contains('about-open')) {
@@ -508,8 +490,7 @@ function bindEvents() {
       // Index → About directly: a single history transition (push '#about'
       // on top of '#index'), not "go back, then push" — calling history.back()
       // and pushState right after it would race against each other.
-      document.body.classList.add('about-from-index');
-      closeGridVisual(true, window.innerWidth <= 768);
+      closeGridVisual(true);
       if (location.hash !== '#about') history.pushState(null, '', '#about');
       openAboutVisual();
     } else {
@@ -612,11 +593,10 @@ function openGridVisual() {
   gridOverlay.offsetHeight; // force reflow so transition fires from translateX(100%)
   gridOverlay.classList.add('open');
   document.body.classList.add('index-open');
-  crossFadeLabel(expandBtn, 'Open viewer');
-  if (window.innerWidth <= 768) crossFadeLabel(galleryIndexBtn, 'Index overview');
+  crossFadeLabel(expandBtn, 'Back');
 }
 
-function closeGridVisual(keepAbout = false, instant = false) {
+function closeGridVisual(keepAbout = false) {
   if (!keepAbout && document.body.classList.contains('about-open')) {
     // Grid (z-index 50) covers everything — reset About state silently with no animations.
     // Calling closeAboutVisual() here would trigger its viewport transitions and fight the grid slide-out.
@@ -630,17 +610,10 @@ function closeGridVisual(keepAbout = false, instant = false) {
   }
   gridOverlay.classList.remove('open');
   document.body.classList.remove('index-open');
-  crossFadeLabel(expandBtn, 'Open index overview');
-  if (window.innerWidth <= 768) crossFadeLabel(galleryIndexBtn, 'Viewer');
-  if (instant) {
-    // Skip the slide-out animation (e.g. index → about on mobile) so the
-    // viewer never flashes through the grid as it moves off-screen.
+  crossFadeLabel(expandBtn, 'Expand');
+  gridOverlay.addEventListener('transitionend', () => {
     gridOverlay.setAttribute('hidden', '');
-  } else {
-    gridOverlay.addEventListener('transitionend', () => {
-      gridOverlay.setAttribute('hidden', '');
-    }, { once: true });
-  }
+  }, { once: true });
 }
 
 function crossFadeLabel(el, newText) {
@@ -657,10 +630,10 @@ function crossFadeLabel(el, newText) {
     el.style.opacity = '1';
     setTimeout(() => {
       el.style.transition = '';
+      // Force full opacity (instead of clearing back to the stylesheet value):
+      // iOS can leave :active "stuck" after the tap that triggered this label
+      // change, which would otherwise show the dimmed 0.3 state permanently.
       el.style.opacity = '1';
-      // Clear the inline override after iOS :active has settled so CSS
-      // hover rules work again on desktop (~400ms covers the active window).
-      setTimeout(() => { el.style.opacity = ''; }, 400);
     }, 250);
   }, 150);
 }
@@ -729,12 +702,6 @@ function openAboutVisual() {
   crossFadeLabel(aboutLink, 'Back');
   showMetaBack();
   document.body.classList.add('about-open');
-  // On mobile, relabel the bottom-bar buttons: "Back to" (galleryIndexBtn)
-  // and "Index overview" (expandBtn) both lead to the index.
-  if (window.innerWidth <= 768) {
-    crossFadeLabel(galleryIndexBtn, 'Back to');
-    crossFadeLabel(expandBtn, 'Index overview');
-  }
 }
 
 function closeAboutVisual() {
@@ -742,14 +709,6 @@ function closeAboutVisual() {
 
   closeAboutTimers.forEach(clearTimeout);
   closeAboutTimers = [];
-
-  // Clear the from-index context immediately so the CSS viewport suppression
-  // lifts before the slide-back animation, then restore all bottom-bar labels.
-  document.body.classList.remove('about-from-index');
-  if (window.innerWidth <= 768) {
-    crossFadeLabel(galleryIndexBtn, 'Viewer');
-    crossFadeLabel(expandBtn, 'Open index overview');
-  }
 
   crossFadeLabel(aboutLink, 'About');
   hideMetaBack();
