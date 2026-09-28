@@ -594,15 +594,10 @@ window.addEventListener('popstate', () => {
 
 /* ─── Index Prev/Next navigation (desktop only) ──────────────────── */
 function updateIndexNav() {
-  const units = indexCols.querySelectorAll('.col-unit');
-  if (!units.length) return;
-  const pad = parseInt(getComputedStyle(indexCols).paddingLeft) || 14;
-  let current = 0;
-  for (let i = 0; i < units.length; i++) {
-    if (units[i].offsetLeft - pad <= indexCols.scrollLeft + 1) current = i;
-  }
-  indexPrev.classList.toggle('nav-disabled', current === 0);
-  indexNext.classList.toggle('nav-disabled', current >= units.length - 1);
+  const atStart = indexCols.scrollLeft <= 0;
+  const atEnd = indexCols.scrollLeft + indexCols.clientWidth >= indexCols.scrollWidth - 1;
+  indexPrev.classList.toggle('nav-disabled', atStart);
+  indexNext.classList.toggle('nav-disabled', atEnd);
 }
 
 indexPrev.addEventListener('click', () => {
