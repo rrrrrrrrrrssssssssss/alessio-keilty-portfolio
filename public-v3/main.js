@@ -645,6 +645,10 @@ indexNext.addEventListener('click', () => {
 
 indexCols.addEventListener('scroll', updateIndexNav, { passive: true });
 
+[indexOnviewClient, indexOnviewTitle, indexOnviewDesc].forEach(el => {
+  el.addEventListener('click', () => closeGrid());
+});
+
 function openGridVisual() {
   indexCols.scrollLeft = 0;
   indexCols.scrollTop = 0;
