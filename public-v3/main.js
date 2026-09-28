@@ -25,9 +25,13 @@ const aboutContent = document.getElementById('about-content');
 const authorNameEl = document.getElementById('author-name');
 const indexTitleBtn= document.getElementById('index-title-btn');
 const indexAuthor  = document.getElementById('index-author');
-const indexNav     = document.getElementById('index-nav');
-const indexPrev    = document.getElementById('index-prev');
-const indexNext    = document.getElementById('index-next');
+const indexNav          = document.getElementById('index-nav');
+const indexPrev         = document.getElementById('index-prev');
+const indexNext         = document.getElementById('index-next');
+const indexOnview       = document.getElementById('index-onview');
+const indexOnviewClient = document.getElementById('index-onview-client');
+const indexOnviewTitle  = document.getElementById('index-onview-title');
+const indexOnviewDesc   = document.getElementById('index-onview-desc');
 
 /* ─── Image URL helpers ──────────────────────────────────────────── */
 // Vercel Blob images are stored as full URLs; legacy images use /uploads/.
@@ -592,6 +596,21 @@ window.addEventListener('popstate', () => {
   }
 });
 
+/* ─── Index "On view" metadata (desktop only) ───────────────────── */
+function updateIndexOnview() {
+  const item = items[cur];
+  if (!item) return;
+  const year = item.image.year || item.project.year;
+  const desc = item.image.description || item.project.description;
+  const titleYear = [item.project.title, year].filter(Boolean).join(', ');
+  indexOnviewClient.textContent = item.project.client || '';
+  indexOnviewClient.hidden = !item.project.client;
+  indexOnviewTitle.textContent = titleYear;
+  indexOnviewTitle.hidden = !titleYear;
+  indexOnviewDesc.textContent = desc || '';
+  indexOnviewDesc.hidden = !desc;
+}
+
 /* ─── Index Prev/Next navigation (desktop only) ──────────────────── */
 function updateIndexNav() {
   const atStart = indexCols.scrollLeft <= 0;
@@ -661,6 +680,8 @@ function openGridVisual() {
     indexCols.style.paddingTop = (navTargetTop + indexNav.offsetHeight + 6) + 'px';
 
     updateIndexNav();
+    updateIndexOnview();
+    indexOnview.style.opacity = '1';
   }
 
   gridOverlay.classList.add('open');
@@ -683,6 +704,7 @@ function closeGridVisual(keepAbout = false) {
   // Fade out the flying elements, restore the original
   indexAuthor.style.opacity = '0';
   indexNav.style.opacity = '0';
+  indexOnview.style.opacity = '0';
   indexCols.style.paddingTop = '';
   authorNameEl.style.opacity = '';
   authorNameEl.style.transition = '';

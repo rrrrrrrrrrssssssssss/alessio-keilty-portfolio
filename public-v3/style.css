@@ -348,6 +348,19 @@ body.index-open #bottom-bar {
   transition: top 0.5s ease, opacity 0.3s ease;
 }
 
+#index-onview {
+  position: fixed;
+  top: var(--pad);
+  right: var(--pad);
+  display: flex;
+  gap: var(--gap);
+  align-items: baseline;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 55;
+  transition: opacity 0.3s ease;
+}
+
 #index-prev,
 #index-next {
   cursor: pointer;
@@ -733,7 +746,8 @@ body.about-open.about-closing #viewport {
   }
 
   #index-author,
-  #index-nav { display: none; }
+  #index-nav,
+  #index-onview { display: none; }
 
   .col-unit {
     flex-direction: column;
