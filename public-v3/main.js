@@ -662,6 +662,11 @@ function openGridVisual() {
     indexNav.style.transition = '';
     indexNav.style.top = navTargetTop + 'px';
 
+    // Push image content below the nav buttons with a consistent gap
+    const navBottom = navTargetTop + indexNav.offsetHeight;
+    const gap = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 28;
+    indexCols.style.paddingTop = (navBottom + gap) + 'px';
+
     updateIndexNav();
   }
 
@@ -685,6 +690,7 @@ function closeGridVisual(keepAbout = false) {
   // Fade out the flying elements, restore the original
   indexAuthor.style.opacity = '0';
   indexNav.style.opacity = '0';
+  indexCols.style.paddingTop = '';
   authorNameEl.style.opacity = '';
   authorNameEl.style.transition = '';
 
