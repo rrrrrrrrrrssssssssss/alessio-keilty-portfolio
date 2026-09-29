@@ -739,24 +739,36 @@ function openGridVisual(instant = false) {
   document.body.classList.add('index-open');
 
   if (instant) {
-    // Pin indexHeader to 0 — CSS .open would snap it to 1 immediately
-    indexHeader.style.transition = 'none';
-    indexHeader.style.opacity    = '0';
+    const isMobile = window.innerWidth <= 768;
 
-    // Hide all photos and column texts
+    if (!isMobile) {
+      // Desktop: pin indexHeader at 0 — CSS .open would snap it to 1 immediately
+      indexHeader.style.transition = 'none';
+      indexHeader.style.opacity    = '0';
+    }
+
+    // Hide photos and column texts for the fade-in
     const photoEls = Array.from(indexCols.querySelectorAll('.col-thumb, .col-meta, .col-gap'));
     photoEls.forEach(el => { el.style.opacity = '0'; el.style.transition = 'none'; });
 
-    expandBtn.textContent = 'Back';
+    expandBtn.textContent = 'Go to the viewer';
 
-    const TEXT_FADE   = 0.35; // s — header texts
-    const PHOTO_DELAY = 300;  // ms — photos start just after texts begin
-    const PHOTO_FADE  = 0.4;  // s — all photos together
+    // Text elements to animate: top-bar buttons on mobile, overlay header on desktop
+    const textEls = isMobile
+      ? [galleryIndexBtn, expandBtn]
+      : [indexHeader, indexAuthor, indexNav, indexOnview];
+    if (isMobile) {
+      textEls.forEach(el => { el.style.opacity = '0'; el.style.transition = 'none'; });
+    }
+
+    const TEXT_FADE   = 0.35; // s
+    const PHOTO_DELAY = 300;  // ms
+    const PHOTO_FADE  = 0.4;  // s
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        // 1) Header texts fade in together
-        [indexHeader, indexAuthor, indexNav, indexOnview].forEach(el => {
+        // 1) Texts fade in together
+        textEls.forEach(el => {
           el.style.transition = `opacity ${TEXT_FADE}s ease`;
           el.style.opacity    = '1';
         });
@@ -772,16 +784,20 @@ function openGridVisual(instant = false) {
           }, PHOTO_FADE * 1000 + 50);
         }, PHOTO_DELAY);
 
-        // Cleanup header texts (indexHeader reverts to CSS; others keep inline opacity:1)
+        // Cleanup text transitions
         setTimeout(() => {
-          indexHeader.style.transition = '';
-          indexHeader.style.opacity    = '';
-          [indexAuthor, indexNav, indexOnview].forEach(el => { el.style.transition = ''; });
+          if (isMobile) {
+            textEls.forEach(el => { el.style.transition = ''; el.style.opacity = ''; });
+          } else {
+            indexHeader.style.transition = '';
+            indexHeader.style.opacity    = '';
+            [indexAuthor, indexNav, indexOnview].forEach(el => { el.style.transition = ''; });
+          }
         }, TEXT_FADE * 1000 + 50);
       });
     });
 
-    // Restore transitions/transform so subsequent opens/closes animate normally
+    // Restore grid transitions/transform so subsequent opens/closes animate normally
     requestAnimationFrame(() => {
       gridOverlay.style.transition = '';
       gridOverlay.style.transform  = '';
@@ -790,7 +806,7 @@ function openGridVisual(instant = false) {
     });
     return;
   }
-  crossFadeLabel(expandBtn, 'Back');
+  crossFadeLabel(expandBtn, 'Go to the viewer');
 }
 
 function closeGridVisual(keepAbout = false) {
@@ -920,7 +936,7 @@ function openAboutVisual() {
   closeAboutTimers.forEach(clearTimeout);
   closeAboutTimers = [];
   document.body.classList.remove('about-closing');
-  crossFadeLabel(aboutLink, 'On view');
+  if (window.innerWidth > 768) crossFadeLabel(aboutLink, 'On view');
   showMetaBack();
   document.body.classList.add('about-open');
 }
@@ -931,7 +947,7 @@ function closeAboutVisual() {
   closeAboutTimers.forEach(clearTimeout);
   closeAboutTimers = [];
 
-  crossFadeLabel(aboutLink, 'About');
+  if (window.innerWidth > 768) crossFadeLabel(aboutLink, 'About');
   hideMetaBack();
 
   // CSS animations handle everything: content fades (0.4s), viewport slides back (delay 0.4s, 0.35s).
