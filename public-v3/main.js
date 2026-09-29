@@ -722,12 +722,11 @@ function openGridVisual(instant = false) {
 
     const akH = indexAuthor.offsetHeight;
 
-    // AK sits at top, header just below it, nav below header
-    const akTargetTop     = pad;
-    const headerTargetTop = akTargetTop + akH + gap;
-    const navTargetTop    = headerTargetTop + indexHeader.offsetHeight + 1.5;
+    // Header at CSS default (top: var(--pad)); AK below header; nav below AK
+    const akTargetTop  = pad + indexHeader.offsetHeight + gap;
+    const navTargetTop = akTargetTop + akH + 1.5;
 
-    // FLIP indexAuthor (AK viewer position → above header)
+    // FLIP indexAuthor (AK viewer position → below header)
     const authorRect = authorNameEl.getBoundingClientRect();
     indexAuthor.style.transition  = 'none';
     indexAuthor.style.top         = instant ? akTargetTop + 'px' : authorRect.top + 'px';
@@ -741,8 +740,7 @@ function openGridVisual(instant = false) {
     }
     indexAuthor.style.pointerEvents = 'auto';
 
-    // Header position (push down to sit below AK)
-    indexHeader.style.top = headerTargetTop + 'px';
+    // Header stays at CSS default top: var(--pad) — no JS override needed
 
     indexNav.style.top     = navTargetTop + 'px';
     indexNav.style.opacity = '0';
