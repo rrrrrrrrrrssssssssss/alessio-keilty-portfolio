@@ -52,8 +52,8 @@ html, body {
 }
 
 @media (hover: hover) {
-  #top-bar:has(:hover) #gallery-index-btn,
-  #top-bar:has(:hover) #expand-btn {
+  #top-bar:has(#gallery-index-btn:hover) #expand-btn,
+  #expand-btn:hover {
     opacity: 0.3;
   }
 }
@@ -323,8 +323,8 @@ body.index-open #bottom-bar {
   pointer-events: auto;
 }
 
-#index-title-btn:hover,
 #grid-close:hover { opacity: 0.3; }
+#index-header:has(#index-title-btn:hover) #grid-close { opacity: 0.3; }
 
 #index-author {
   position: fixed;
@@ -333,6 +333,7 @@ body.index-open #bottom-bar {
   letter-spacing: 0.030em;
   opacity: 0;
   pointer-events: none;
+  cursor: pointer;
   z-index: 55;
   transition: top 0.5s ease, opacity 0.3s ease;
 }

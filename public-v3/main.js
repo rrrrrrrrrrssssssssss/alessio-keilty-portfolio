@@ -178,7 +178,11 @@ function buildIndex() {
 
       thumb.appendChild(img);
       thumb.appendChild(num);
-      thumb.addEventListener('click', () => { closeGrid(); goTo(globalIdx); });
+      thumb.addEventListener('click', () => {
+        closeGridVisual(false);
+        history.replaceState(null, '', location.pathname);
+        goTo(globalIdx);
+      });
       colImagesInner.appendChild(thumb);
     });
 
@@ -491,8 +495,14 @@ function bindEvents() {
   metaClient.addEventListener('click', closeAbout);
   metaTitle.addEventListener('click', closeAbout);
   metaDesc.addEventListener('click', closeAbout);
-  indexTitleBtn.addEventListener('click', () => closeGrid(true));
-  document.getElementById('grid-close').addEventListener('click', () => closeGrid(true));
+  indexTitleBtn.addEventListener('click', () => {
+    closeGridVisual(false);
+    history.replaceState(null, '', location.pathname);
+  });
+  document.getElementById('grid-close').addEventListener('click', () => {
+    closeGridVisual(false);
+    history.replaceState(null, '', location.pathname);
+  });
   authorNameEl.addEventListener('click', () => {
     if (document.body.classList.contains('about-open')) {
       closeAbout();
@@ -647,6 +657,12 @@ indexCols.addEventListener('scroll', updateIndexNav, { passive: true });
 
 indexOnview.addEventListener('click', () => closeGrid());
 
+indexAuthor.addEventListener('click', () => {
+  closeGridVisual(true);
+  if (location.hash !== '#about') history.pushState(null, '', '#about');
+  openAboutVisual();
+});
+
 function openGridVisual() {
   indexCols.scrollLeft = 0;
   indexCols.scrollTop = 0;
@@ -668,6 +684,7 @@ function openGridVisual() {
     indexAuthor.getBoundingClientRect(); // snap
     indexAuthor.style.transition = '';
     indexAuthor.style.top = targetTop + 'px';
+    indexAuthor.style.pointerEvents = 'auto';
 
     // Snap index-nav 1.5px below index-author, animate together
     const navTargetTop = targetTop + indexAuthor.offsetHeight + 1.5;
@@ -706,6 +723,7 @@ function closeGridVisual(keepAbout = false) {
   }
   // Fade out the flying elements, restore the original
   indexAuthor.style.opacity = '0';
+  indexAuthor.style.pointerEvents = '';
   indexNav.style.opacity = '0';
   indexOnview.style.opacity = '0';
   indexOnview.style.pointerEvents = '';
