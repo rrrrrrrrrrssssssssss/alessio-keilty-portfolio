@@ -761,6 +761,28 @@ body.about-open.about-closing #viewport {
     padding: 7px var(--pad) var(--pad);
   }
 
+  /* About + Alessio Keilty sit above the button bar when index is open */
+  body.index-open #bottom-bar {
+    opacity: 1;
+    pointer-events: auto;
+    bottom: 41px;
+    left: 0;
+    right: 0;
+    padding: 6px var(--pad) 0;
+    background: #fff;
+    z-index: 60;
+  }
+
+  body.index-open #about-content,
+  body.index-open #meta-group {
+    display: none;
+  }
+
+  /* Extra bottom clearance: About+AK bar (bottom:41px, ~38px tall) + button bar */
+  body.index-open #index-cols {
+    padding-bottom: 96px;
+  }
+
   #grid-overlay {
     display: flex;
     flex-direction: column;

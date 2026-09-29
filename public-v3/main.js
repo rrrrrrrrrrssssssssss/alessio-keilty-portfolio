@@ -4,6 +4,7 @@ let N = 0;
 let cur = 0;
 let closeAboutTimers = [];
 let sidebarScrollRaf = null; // rAF id for the active sidebar scroll animation
+let indexWasPushed = false;  // true only when index was opened via pushState (user nav), not replaceState (landing)
 
 /* ─── DOM refs ───────────────────────────────────────────────────── */
 const track       = document.getElementById('track');
@@ -23,6 +24,7 @@ const galleryIndexBtn = document.getElementById('gallery-index-btn');
 const metaBack     = document.getElementById('meta-back');
 const aboutContent = document.getElementById('about-content');
 const authorNameEl = document.getElementById('author-name');
+const bottomBarEl  = document.getElementById('bottom-bar');
 const indexHeader  = document.getElementById('index-header');
 const indexTitleBtn= document.getElementById('index-title-btn');
 const indexAbout   = document.getElementById('index-about');
@@ -502,6 +504,11 @@ function bindEvents() {
     if (document.body.classList.contains('about-open')) {
       closeAboutVisual();
       history.replaceState(null, '', location.pathname);
+    } else if (window.innerWidth <= 768 && document.body.classList.contains('index-open')) {
+      // Mobile: About clicked from index → close index, open about
+      closeGridVisual(true);
+      if (location.hash !== '#about') history.pushState(null, '', '#about');
+      openAboutVisual();
     } else {
       openAbout();
     }
@@ -584,12 +591,17 @@ function bindEvents() {
 // functions that actually do the work, so there is one code path whether
 // the close was triggered in-app or via the browser's back button.
 function openGrid() {
+  indexWasPushed = true;
   if (location.hash !== '#index') history.pushState(null, '', '#index');
   openGridVisual();
 }
 
 function closeGrid(keepAbout = false) {
-  if (location.hash === '#index') { history.back(); return; }
+  if (location.hash === '#index') {
+    if (indexWasPushed) { history.back(); return; }
+    // Landing: index was replaceState'd — just clean up hash and close visually
+    history.replaceState(null, '', location.pathname);
+  }
   closeGridVisual(keepAbout);
 }
 
@@ -785,9 +797,9 @@ function openGridVisual(instant = false) {
 
     expandBtn.textContent = 'Go to the viewer';
 
-    // Text elements to animate: top-bar buttons on mobile, overlay header on desktop
+    // Text elements to animate: top-bar buttons + bottom-bar (About + AK) on mobile, overlay header on desktop
     const textEls = isMobile
-      ? [galleryIndexBtn, expandBtn]
+      ? [galleryIndexBtn, expandBtn, bottomBarEl]
       : [indexHeader, indexAbout, indexAuthor, indexNav, indexOnview];
     if (isMobile) {
       textEls.forEach(el => { el.style.opacity = '0'; el.style.transition = 'none'; });
@@ -842,6 +854,7 @@ function openGridVisual(instant = false) {
 }
 
 function closeGridVisual(keepAbout = false) {
+  indexWasPushed = false;
   if (!keepAbout && document.body.classList.contains('about-open')) {
     // Grid (z-index 50) covers everything — reset About state silently with no animations.
     // Calling closeAboutVisual() here would trigger its viewport transitions and fight the grid slide-out.
