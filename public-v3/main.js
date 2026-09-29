@@ -89,10 +89,12 @@ async function init() {
   bindEvents();
 
   // /3 always opens on the index; #about is the only exception
-  if (location.hash === '#about') openAboutVisual();
-  else {
+  if (location.hash === '#about') {
+    document.body.classList.remove('preload'); // openGridVisual won't run, so remove it here
+    openAboutVisual();
+  } else {
     history.replaceState(null, '', '#index');
-    openGridVisual(true); // instant: no animation on first load
+    openGridVisual(true); // instant: removes preload internally and fades in the landing UI
   }
 }
 
@@ -509,7 +511,7 @@ function bindEvents() {
       // Mobile: About clicked from index — close index INSTANTLY (no slide) to
       // avoid the double transition (index→viewer→about viewport slides).
       gridOverlay.style.transition = 'none';
-      viewport.style.transition = 'none';
+      viewport.style.transition = 'none'; // kept suppressed through openAboutVisual
       document.body.classList.add('about-from-index');
       document.body.classList.remove('index-open');
       gridOverlay.classList.remove('open');
@@ -517,10 +519,12 @@ function bindEvents() {
       void gridOverlay.getBoundingClientRect();
       gridOverlay.setAttribute('hidden', '');
       gridOverlay.style.transition = '';
-      viewport.style.transition = '';
+      // viewport.style.transition restored after about-open is set, so the CSS
+      // transition from 0→100vw can't fire during the class change.
       crossFadeLabel(expandBtn, 'Expand');
       if (location.hash !== '#about') history.pushState(null, '', '#about');
       openAboutVisual();
+      requestAnimationFrame(() => { viewport.style.transition = ''; });
     } else {
       openAbout();
     }
@@ -550,7 +554,12 @@ function bindEvents() {
       openAbout();
     }
   });
-  document.getElementById('meta-back').addEventListener('click', closeAbout);
+  document.getElementById('meta-back').addEventListener('click', () => {
+    // "On view" always goes to the viewer, not back through history
+    // (history.back() would reopen the index if coming from there).
+    closeAboutVisual();
+    if (location.hash === '#about') history.replaceState(null, '', location.pathname);
+  });
   document.getElementById('about-bio').addEventListener('click', closeAbout);
 
   // Unified touch tracking shared by all swipe gesture handlers below
@@ -632,11 +641,14 @@ window.addEventListener('popstate', () => {
     closeGridVisual(document.body.classList.contains('about-open'));
   }
   if (document.body.classList.contains('about-open') && location.hash !== '#about') {
+    // When navigating back to the index, suppress the viewport slide-back
+    // (the grid overlay will cover the viewport immediately).
+    if (location.hash === '#index') document.body.classList.add('about-to-index');
     closeAboutVisual();
   }
   // Forward navigation (or a direct/shared link) landing on a hash while
   // its overlay isn't open yet.
-  if (location.hash === '#index' && !gridOverlay.classList.contains('open') && !document.body.classList.contains('about-open')) {
+  if (location.hash === '#index' && !gridOverlay.classList.contains('open')) {
     openGridVisual();
   }
   if (location.hash === '#about' && !document.body.classList.contains('about-open')) {
@@ -776,44 +788,30 @@ function openGridVisual(instant = false) {
   document.body.classList.add('index-open');
 
   if (instant) {
-    const isMobile = window.innerWidth <= 768;
-
-    if (!isMobile) {
-      // Desktop: pin indexHeader at 0 — CSS .open would snap it to 1 immediately
-      indexHeader.style.transition = 'none';
-      indexHeader.style.opacity    = '0';
-    }
-
-    // Hide photos and column texts for the fade-in
-    const photoEls = Array.from(indexCols.querySelectorAll('.col-thumb, .col-meta, .col-gap'));
-    photoEls.forEach(el => { el.style.opacity = '0'; el.style.transition = 'none'; });
+    const isMobile    = window.innerWidth <= 768;
+    const TEXT_FADE   = 0.35;
+    const PHOTO_DELAY = 300;
+    const PHOTO_FADE  = 0.4;
 
     expandBtn.textContent = 'Go to the viewer';
 
-    // Text elements to fade in on landing.
-    // Mobile: texts (buttons, About/AK bar) are already visible via CSS because
-    // body.index-open is set in the HTML from page load — no JS fade-in needed.
-    // Desktop: overlay header elements start hidden and fade in here.
-    const textEls = isMobile
-      ? []
-      : [indexHeader, indexAuthor, indexNav, indexOnview];
+    const photoEls = Array.from(indexCols.querySelectorAll('.col-thumb, .col-meta, .col-gap'));
+    photoEls.forEach(el => { el.style.opacity = '0'; el.style.transition = 'none'; });
 
-    const TEXT_FADE   = 0.35; // s
-    const PHOTO_DELAY = 300;  // ms
-    const PHOTO_FADE  = 0.4;  // s
+    if (isMobile) {
+      // Mobile landing: buttons + About/AK bar are hidden by body.preload CSS.
+      // Pin opacity:0 inline BEFORE removing that class so the CSS lift doesn't
+      // cause a visible flash to opacity:1, then fade in from the committed state.
+      const mobileTextEls = [galleryIndexBtn, expandBtn, bottomBarEl];
+      mobileTextEls.forEach(el => { el.style.opacity = '0'; el.style.transition = 'none'; });
+      document.body.classList.remove('preload');
+      void indexCols.offsetHeight; // commit opacity:0 so the transition fires correctly
 
-    requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        // Force the browser to commit the opacity:0 state before animating.
-        // Without this reflow, Safari may skip the transition and jump to opacity:1.
-        void indexCols.offsetHeight;
-        // 1) Texts fade in together
-        textEls.forEach(el => {
+        mobileTextEls.forEach(el => {
           el.style.transition = `opacity ${TEXT_FADE}s ease`;
           el.style.opacity    = '1';
         });
-
-        // 2) All photos + column texts fade in together
         setTimeout(() => {
           photoEls.forEach(el => {
             el.style.transition = `opacity ${PHOTO_FADE}s ease`;
@@ -823,21 +821,49 @@ function openGridVisual(instant = false) {
             photoEls.forEach(el => { el.style.transition = ''; el.style.opacity = ''; });
           }, PHOTO_FADE * 1000 + 50);
         }, PHOTO_DELAY);
-
-        // Cleanup text transitions
         setTimeout(() => {
-          if (isMobile) {
-            textEls.forEach(el => { el.style.transition = ''; el.style.opacity = ''; });
-          } else {
-            indexHeader.style.transition = '';
-            indexHeader.style.opacity    = '';
-            [indexAuthor, indexNav, indexOnview].forEach(el => { el.style.transition = ''; });
-          }
+          mobileTextEls.forEach(el => { el.style.transition = ''; el.style.opacity = ''; });
+        }, TEXT_FADE * 1000 + 50);
+      });
+
+      requestAnimationFrame(() => {
+        gridOverlay.style.transition = '';
+        gridOverlay.style.transform  = '';
+      });
+      return;
+    }
+
+    // Desktop landing: pin header at opacity:0 and fade it in.
+    document.body.classList.remove('preload');
+    indexHeader.style.transition = 'none';
+    indexHeader.style.opacity    = '0';
+    const textEls = [indexHeader, indexAuthor, indexNav, indexOnview];
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        // Force reflow so Safari commits opacity:0 before the transition fires.
+        void indexCols.offsetHeight;
+        textEls.forEach(el => {
+          el.style.transition = `opacity ${TEXT_FADE}s ease`;
+          el.style.opacity    = '1';
+        });
+        setTimeout(() => {
+          photoEls.forEach(el => {
+            el.style.transition = `opacity ${PHOTO_FADE}s ease`;
+            el.style.opacity    = '1';
+          });
+          setTimeout(() => {
+            photoEls.forEach(el => { el.style.transition = ''; el.style.opacity = ''; });
+          }, PHOTO_FADE * 1000 + 50);
+        }, PHOTO_DELAY);
+        setTimeout(() => {
+          indexHeader.style.transition = '';
+          indexHeader.style.opacity    = '';
+          [indexAuthor, indexNav, indexOnview].forEach(el => { el.style.transition = ''; });
         }, TEXT_FADE * 1000 + 50);
       });
     });
 
-    // Restore grid transitions/transform so subsequent opens/closes animate normally
     requestAnimationFrame(() => {
       gridOverlay.style.transition = '';
       gridOverlay.style.transform  = '';
@@ -1006,7 +1032,7 @@ function closeAboutVisual() {
   document.body.classList.add('about-closing');
 
   closeAboutTimers.push(setTimeout(() => {
-    document.body.classList.remove('about-open', 'about-closing');
+    document.body.classList.remove('about-open', 'about-closing', 'about-to-index');
   }, 800));
 }
 

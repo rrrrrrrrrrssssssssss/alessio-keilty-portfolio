@@ -582,6 +582,13 @@ body.about-from-index:not(.about-closing) #viewport {
   transform: translateX(100vw);
 }
 
+/* Mobile: skip viewport slide-back when returning from About to the index
+   (grid overlay will cover the viewport anyway) */
+body.about-to-index.about-open.about-closing #viewport {
+  animation: none;
+  transform: translateX(0);
+}
+
 
 .contact-link {
   color: #000;
@@ -713,7 +720,7 @@ body.about-from-index:not(.about-closing) #viewport {
   /* Bottom bar (About + Alessio Keilty) → sopra la sidebar */
   #bottom-bar {
     bottom: 131px;
-    transition: bottom 0.35s ease;
+    transition: bottom 0.35s ease, background-color 0.35s ease;
   }
 
   #bottom-row { margin-bottom: -1px; line-height: 1.2; }
@@ -767,6 +774,15 @@ body.about-from-index:not(.about-closing) #viewport {
     right: 0;
     bottom: 0;
     padding: 7px var(--pad) var(--pad);
+  }
+
+  /* Hide mobile text bars during data loading (body.preload in HTML); JS removes
+     this class and fades them in once the index content is ready. */
+  body.preload #top-bar,
+  body.preload #bottom-bar {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: none !important;
   }
 
   /* About + Alessio Keilty sit above the button bar when index is open */
