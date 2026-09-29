@@ -698,14 +698,16 @@ function openGridVisual() {
     indexAuthor.style.top = targetTop + 'px';
     indexAuthor.style.pointerEvents = 'auto';
 
-    // Snap index-nav 1.5px below index-author, animate together
+    // Place index-nav at target immediately (no FLIP), fade in after AK settles
     const navTargetTop = targetTop + indexAuthor.offsetHeight + 1.5;
     indexNav.style.transition = 'none';
-    indexNav.style.top = (authorRect.top + authorNameEl.offsetHeight + 1.5) + 'px';
-    indexNav.style.opacity = '1';
-    indexNav.getBoundingClientRect(); // snap
-    indexNav.style.transition = '';
     indexNav.style.top = navTargetTop + 'px';
+    indexNav.style.opacity = '0';
+    indexNav.getBoundingClientRect(); // flush
+    setTimeout(() => {
+      indexNav.style.transition = 'opacity 0.3s ease';
+      indexNav.style.opacity = '1';
+    }, 500);
 
     // Push image content 6px below nav buttons
     indexCols.style.paddingTop = (navTargetTop + indexNav.offsetHeight + 6) + 'px';
