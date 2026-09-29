@@ -690,22 +690,21 @@ function openGridVisual(instant = false) {
     const targetTop = pad + indexTitleBtn.offsetHeight + 3;
 
     if (instant) {
-      // Freeze all transitions — place everything at final position
       gridOverlay.style.transition = 'none';
-      indexAuthor.style.transition = 'none';
-      indexNav.style.transition = 'none';
+      indexNav.style.transition    = 'none';
       indexOnview.style.transition = 'none';
     }
 
-    // FLIP: index-author from viewer position → index header (skipped when instant)
+    // FLIP: snap index-author to start position (always freeze transition first)
     const authorRect = authorNameEl.getBoundingClientRect();
-    indexAuthor.style.top = instant ? targetTop + 'px' : authorRect.top + 'px';
-    indexAuthor.style.opacity = instant ? '0' : '1'; // invisible until intro fade
+    indexAuthor.style.transition = 'none';
+    indexAuthor.style.top        = instant ? targetTop + 'px' : authorRect.top + 'px';
+    indexAuthor.style.opacity    = instant ? '0' : '1';
     authorNameEl.style.transition = 'none';
-    authorNameEl.style.opacity = '0';
+    authorNameEl.style.opacity    = '0';
     if (!instant) {
-      indexAuthor.getBoundingClientRect(); // snap
-      indexAuthor.style.transition = '';
+      indexAuthor.getBoundingClientRect(); // flush — registers start position before animating
+      indexAuthor.style.transition = '';   // restore CSS transition
       indexAuthor.style.top = targetTop + 'px';
     }
     indexAuthor.style.pointerEvents = 'auto';
@@ -738,43 +737,72 @@ function openGridVisual(instant = false) {
     // #index-header jumps to opacity:1 when .open is added; pin it back to 0 for the intro.
     indexHeader.style.transition = 'none';
     indexHeader.style.opacity    = '0';
-    // Hide all thumbnails for the photo cascade
-    indexCols.querySelectorAll('.col-thumb').forEach(t => {
-      t.style.opacity = '0';
-      t.style.transition = 'none';
+
+    // Collect viewport-visible col-units (columns whose left edge is within the screen)
+    const vw = window.innerWidth;
+    const visibleUnits = Array.from(indexCols.querySelectorAll('.col-unit')).filter(u => {
+      const r = u.getBoundingClientRect();
+      return r.left < vw && r.right > 0;
+    });
+
+    // Hide photos + column texts that will cascade
+    visibleUnits.forEach(unit => {
+      unit.querySelectorAll('.col-thumb').forEach(t => {
+        t.style.opacity = '0';
+        t.style.transition = 'none';
+      });
+      [unit.querySelector('.col-meta'), unit.querySelector('.col-gap')].forEach(el => {
+        if (el) { el.style.opacity = '0'; el.style.transition = 'none'; }
+      });
     });
 
     expandBtn.textContent = 'Back';
 
     let introTimers = [];
-    const TEXT_FADE  = 0.6;  // seconds for texts
-    const TEXT_DELAY = 80;   // ms before texts start
-    const PHOTO_START = TEXT_DELAY + TEXT_FADE * 1000 * 0.6; // photos start while texts are still fading in
-    const INTERVAL   = 55;   // ms between each photo
+    const TEXT_FADE   = 0.4;  // s — header texts fade duration
+    const PHOTO_START = 300;  // ms — when photo cascade begins
+    const TOTAL_MS    = 2500; // target total animation time
+
+    // Count all animated elements: photos + (col-meta + col-gap) per visible unit
+    let totalEls = 0;
+    visibleUnits.forEach(u => {
+      totalEls += u.querySelectorAll('.col-thumb').length;
+      if (u.querySelector('.col-meta')) totalEls++;
+      if (u.querySelector('.col-gap'))  totalEls++;
+    });
+    const INTERVAL = totalEls > 0 ? Math.min(100, Math.floor((TOTAL_MS - PHOTO_START) / totalEls)) : 80;
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        // 1) Texts fade in together
+        // 1) Header texts fade in together
         const textT = `opacity ${TEXT_FADE}s ease`;
         [indexHeader, indexAuthor, indexNav, indexOnview].forEach(el => {
           el.style.transition = textT;
           el.style.opacity    = '1';
         });
 
-        // 2) Photos cascade: column by column, photo by photo
+        // 2) Photos + column texts cascade: column by column, element by element
+        const fade = 'opacity 0.25s ease';
+        const reveal = (el, delay) => {
+          introTimers.push(setTimeout(() => {
+            el.style.transition = fade;
+            el.style.opacity    = '1';
+            setTimeout(() => { el.style.transition = ''; el.style.opacity = ''; }, 300);
+          }, delay));
+        };
+
         let delay = PHOTO_START;
-        indexCols.querySelectorAll('.col-unit').forEach(unit => {
+        visibleUnits.forEach(unit => {
           unit.querySelectorAll('.col-thumb').forEach(thumb => {
-            introTimers.push(setTimeout(() => {
-              thumb.style.transition = 'opacity 0.3s ease';
-              thumb.style.opacity    = '1';
-              setTimeout(() => { thumb.style.transition = ''; thumb.style.opacity = ''; }, 350);
-            }, delay));
+            reveal(thumb, delay);
             delay += INTERVAL;
+          });
+          [unit.querySelector('.col-meta'), unit.querySelector('.col-gap')].forEach(el => {
+            if (el) { reveal(el, delay); delay += INTERVAL; }
           });
         });
 
-        // 3) Restore text transitions when done
+        // 3) Restore header text transitions when done
         introTimers.push(setTimeout(() => {
           [indexHeader, indexAuthor, indexNav, indexOnview].forEach(el => {
             el.style.transition = '';
