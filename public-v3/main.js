@@ -689,7 +689,7 @@ function openGridVisual(instant = false) {
     const targetTop = pad + indexTitleBtn.offsetHeight + 3;
 
     if (instant) {
-      // Place everything at final position with no animation
+      // Freeze all transitions — place everything at final position
       gridOverlay.style.transition = 'none';
       indexAuthor.style.transition = 'none';
       indexNav.style.transition = 'none';
@@ -699,7 +699,7 @@ function openGridVisual(instant = false) {
     // FLIP: index-author from viewer position → index header (skipped when instant)
     const authorRect = authorNameEl.getBoundingClientRect();
     indexAuthor.style.top = instant ? targetTop + 'px' : authorRect.top + 'px';
-    indexAuthor.style.opacity = '1';
+    indexAuthor.style.opacity = instant ? '0' : '1'; // invisible until intro fade
     authorNameEl.style.transition = 'none';
     authorNameEl.style.opacity = '0';
     if (!instant) {
@@ -709,13 +709,11 @@ function openGridVisual(instant = false) {
     }
     indexAuthor.style.pointerEvents = 'auto';
 
-    // Prev/Next: appear after AK settles (instant: immediate)
+    // Prev/Next: appear after AK settles (instant: part of intro fade)
     const navTargetTop = targetTop + indexAuthor.offsetHeight + 1.5;
     indexNav.style.top = navTargetTop + 'px';
     indexNav.style.opacity = '0';
-    if (instant) {
-      indexNav.style.opacity = '1';
-    } else {
+    if (!instant) {
       indexNav.getBoundingClientRect();
       setTimeout(() => {
         indexNav.style.transition = 'opacity 0.3s ease';
@@ -727,22 +725,41 @@ function openGridVisual(instant = false) {
 
     updateIndexNav();
     updateIndexOnview();
-    indexOnview.style.opacity = '1';
+    indexOnview.style.opacity = instant ? '0' : '1';
     indexOnview.style.pointerEvents = 'auto';
-
-    if (instant) {
-      // Restore transitions after a frame so subsequent interactions animate normally
-      requestAnimationFrame(() => {
-        gridOverlay.style.transition = '';
-        indexAuthor.style.transition = '';
-        indexNav.style.transition = '';
-        indexOnview.style.transition = '';
-      });
-    }
   }
 
   gridOverlay.classList.add('open');
   document.body.classList.add('index-open');
+
+  if (instant) {
+    // Hide overlay too, then fade everything in together
+    gridOverlay.style.opacity = '0';
+    expandBtn.textContent = 'Back'; // skip crossFadeLabel on first load
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const DUR = '0.35s ease';
+        gridOverlay.style.transition   = `opacity ${DUR}`;
+        gridOverlay.style.opacity      = '';
+        indexAuthor.style.transition   = `opacity ${DUR}`;
+        indexAuthor.style.opacity      = '1';
+        indexNav.style.transition      = `opacity ${DUR}`;
+        indexNav.style.opacity         = '1';
+        indexOnview.style.transition   = `opacity ${DUR}`;
+        indexOnview.style.opacity      = '1';
+
+        setTimeout(() => {
+          gridOverlay.style.transition = '';
+          gridOverlay.style.opacity    = '';
+          indexAuthor.style.transition = '';
+          indexNav.style.transition    = '';
+          indexOnview.style.transition = '';
+        }, 400);
+      });
+    });
+    return; // skip the normal crossFadeLabel below
+  }
   crossFadeLabel(expandBtn, 'Back');
 }
 
