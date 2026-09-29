@@ -133,7 +133,11 @@ function buildSidebar() {
     img.loading = 'lazy';
     img.decoding = 'async';
     div.appendChild(img);
-    div.addEventListener('click', () => { closeAbout(); goTo(i); });
+    div.addEventListener('click', () => {
+      closeAboutVisual();
+      history.replaceState(null, '', location.pathname);
+      goTo(i);
+    });
     sidebarInner.appendChild(div);
   });
 }
@@ -486,7 +490,7 @@ function bindEvents() {
   galleryIndexBtn.addEventListener('click', e => {
     e.stopPropagation();
     document.body.classList.contains('index-open') ? closeGrid() : openGrid();
-    galleryIndexBtn.style.opacity = '1';
+    galleryIndexBtn.style.opacity = '';
   });
   aboutLink.addEventListener('click', e => {
     e.stopPropagation();
@@ -655,7 +659,10 @@ indexNext.addEventListener('click', () => {
 
 indexCols.addEventListener('scroll', updateIndexNav, { passive: true });
 
-indexOnview.addEventListener('click', () => closeGrid());
+indexOnview.addEventListener('click', () => {
+  closeGridVisual(false);
+  history.replaceState(null, '', location.pathname);
+});
 
 indexAuthor.addEventListener('click', () => {
   closeGridVisual(true);
@@ -753,10 +760,7 @@ function crossFadeLabel(el, newText) {
     el.style.opacity = '1';
     setTimeout(() => {
       el.style.transition = '';
-      // Force full opacity (instead of clearing back to the stylesheet value):
-      // iOS can leave :active "stuck" after the tap that triggered this label
-      // change, which would otherwise show the dimmed 0.3 state permanently.
-      el.style.opacity = '1';
+      el.style.opacity = '';
     }, 250);
   }, 150);
 }

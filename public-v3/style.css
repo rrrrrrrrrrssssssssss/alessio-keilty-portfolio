@@ -363,6 +363,13 @@ body.index-open #bottom-bar {
   transition: opacity 0.3s ease;
 }
 
+#index-onview-label,
+#index-onview-client,
+#index-onview-title,
+#index-onview-desc {
+  pointer-events: inherit;
+}
+
 #index-onview-label {
   opacity: 0.3;
   transition: opacity 0.2s;
