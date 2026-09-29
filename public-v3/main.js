@@ -739,7 +739,7 @@ function openGridVisual(instant = false) {
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        const DUR = '0.35s ease';
+        const DUR = '1s ease';
         gridOverlay.style.transition   = `opacity ${DUR}`;
         gridOverlay.style.opacity      = '';
         indexAuthor.style.transition   = `opacity ${DUR}`;
@@ -755,7 +755,7 @@ function openGridVisual(instant = false) {
           indexAuthor.style.transition = '';
           indexNav.style.transition    = '';
           indexOnview.style.transition = '';
-        }, 400);
+        }, 1100);
       });
     });
     return; // skip the normal crossFadeLabel below
