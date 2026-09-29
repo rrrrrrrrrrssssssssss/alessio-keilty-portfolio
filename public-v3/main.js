@@ -738,6 +738,12 @@ function openGridVisual(instant = false) {
     indexNav.style.opacity    = '1';
     indexOnview.style.opacity = '1';
     expandBtn.textContent = 'Back';
+    // Restore transitions so subsequent opens/closes animate normally
+    requestAnimationFrame(() => {
+      gridOverlay.style.transition = '';
+      indexNav.style.transition    = '';
+      indexOnview.style.transition = '';
+    });
     return;
   }
   crossFadeLabel(expandBtn, 'Back');
