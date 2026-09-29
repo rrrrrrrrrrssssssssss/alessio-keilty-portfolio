@@ -700,6 +700,9 @@ body.about-open.about-closing #viewport {
 
   #bottom-row { margin-bottom: -1px; line-height: 1.2; }
 
+  #meta-back { font-size: 0; line-height: 0; }
+  #meta-back::before { content: 'On view'; font-size: 14.5px; line-height: 1.2; }
+
   /* About content su mobile: lascia spazio per scorrere */
   .contact-row { line-height: 1.2; }
 
