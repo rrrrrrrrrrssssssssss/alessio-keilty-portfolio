@@ -83,9 +83,12 @@ async function init() {
   goTo(0);
   bindEvents();
 
-  // Direct/shared link landing on #index or #about
-  if (location.hash === '#index') openGridVisual();
-  else if (location.hash === '#about') openAboutVisual();
+  // /3 always opens on the index; #about is the only exception
+  if (location.hash === '#about') openAboutVisual();
+  else {
+    history.replaceState(null, '', '#index');
+    openGridVisual();
+  }
 }
 
 /* ─── Carousel ───────────────────────────────────────────────────── */
