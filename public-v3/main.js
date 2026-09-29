@@ -544,12 +544,27 @@ function bindEvents() {
     if (document.body.classList.contains('about-open')) {
       closeAbout();
     } else if (gridOverlay.classList.contains('open')) {
-      // Index → About directly: a single history transition (push '#about'
-      // on top of '#index'), not "go back, then push" — calling history.back()
-      // and pushState right after it would race against each other.
-      closeGridVisual(true);
-      if (location.hash !== '#about') history.pushState(null, '', '#about');
-      openAboutVisual();
+      if (window.innerWidth <= 768) {
+        // Mobile index → About: instant grid close (no slide), suppress viewport animation
+        gridOverlay.style.transition = 'none';
+        viewport.style.transition = 'none';
+        document.body.classList.add('about-from-index');
+        document.body.classList.remove('index-open');
+        gridOverlay.classList.remove('open');
+        indexWasPushed = false;
+        void gridOverlay.getBoundingClientRect();
+        gridOverlay.setAttribute('hidden', '');
+        gridOverlay.style.transition = '';
+        crossFadeLabel(expandBtn, 'Expand');
+        if (location.hash !== '#about') history.pushState(null, '', '#about');
+        openAboutVisual();
+        requestAnimationFrame(() => { viewport.style.transition = ''; });
+      } else {
+        // Desktop index → About: slide grid out, then open about
+        closeGridVisual(true);
+        if (location.hash !== '#about') history.pushState(null, '', '#about');
+        openAboutVisual();
+      }
     } else {
       openAbout();
     }
@@ -727,9 +742,11 @@ function openGridVisual(instant = false) {
   indexCols.scrollLeft = 0;
   indexCols.scrollTop = 0;
   if (instant) {
-    // Freeze transform+transition BEFORE unhiding so the browser never sees translateX(100%)
+    // Freeze transition and force the overlay visible before unhiding it, so
+    // neither the desktop slide nor the mobile opacity fade-in fires on landing.
     gridOverlay.style.transition = 'none';
     gridOverlay.style.transform  = 'translateX(0)';
+    gridOverlay.style.opacity    = '1';
   }
   gridOverlay.removeAttribute('hidden');
   if (!instant) {
@@ -920,12 +937,13 @@ function closeGridVisual(keepAbout = false) {
     authorNameEl.style.transition = '';
   }
 
+  gridOverlay.style.opacity = '';  // clear any inline pin from instant open so CSS fade-out can run
   gridOverlay.classList.remove('open');
   document.body.classList.remove('index-open');
   crossFadeLabel(expandBtn, 'Expand');
   gridHideOnEnd = true;
   const onGridEnd = (e) => {
-    if (e.propertyName !== 'transform') return;
+    if (e.target !== gridOverlay) return;
     gridOverlay.removeEventListener('transitionend', onGridEnd);
     if (gridHideOnEnd) gridOverlay.setAttribute('hidden', '');
   };

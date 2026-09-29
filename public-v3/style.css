@@ -807,11 +807,29 @@ body.about-to-index.about-open.about-closing #viewport {
     padding-bottom: 96px;
   }
 
+  /* On mobile the index appears as a fade-in overlay on top of the viewer
+     (no slide from the right). The viewer and sidebar stay in place. */
   #grid-overlay {
     display: flex;
     flex-direction: column;
+    transform: none;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+  #grid-overlay.open {
+    opacity: 1;
+    transform: none;
   }
   #grid-overlay[hidden] { display: none !important; }
+
+  /* Keep viewer/sidebar in place — the grid overlay (z-index 50) covers them */
+  body.index-open #viewport {
+    transform: none;
+  }
+  body.index-open #sidebar-area {
+    transform: none;
+    opacity: 1;
+  }
 
   /* Header duplicated inside the overlay is unused on mobile: the fixed
      top bar already shows the title and the Expand/Back toggle. */
