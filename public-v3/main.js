@@ -713,55 +713,15 @@ function openGridVisual(instant = false) {
 
   if (window.innerWidth > 768) {
     const pad = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--pad')) || 14;
-    const gap = 3; // gap between stacked elements (matches main-page bottom-bar spacing)
 
     if (instant) {
       indexNav.style.transition    = 'none';
       indexOnview.style.transition = 'none';
     }
 
-    // Heights (opacity/position don't affect layout so safe to read now)
-    const aboutH  = indexAbout.offsetHeight;
-    const akH     = indexAuthor.offsetHeight;
+    // Header stays at its CSS default (top: var(--pad)); nav sits just below it
+    const navTargetTop = pad + indexHeader.offsetHeight + 1.5;
 
-    // Target positions: About → AK → Header → Nav (top to bottom)
-    const aboutTargetTop  = pad;
-    const akTargetTop     = aboutTargetTop + aboutH + gap;
-    const headerTargetTop = akTargetTop    + akH    + gap;
-    const navTargetTop    = headerTargetTop + indexHeader.offsetHeight + 1.5;
-
-    // FLIP indexAbout (About link → index top)
-    const aboutLinkRect = aboutLink.getBoundingClientRect();
-    indexAbout.style.transition = 'none';
-    indexAbout.style.top        = instant ? aboutTargetTop + 'px' : aboutLinkRect.top + 'px';
-    indexAbout.style.opacity    = instant ? '0' : '1';
-    aboutLink.style.transition  = 'none';
-    aboutLink.style.opacity     = '0';
-    if (!instant) {
-      indexAbout.getBoundingClientRect();
-      indexAbout.style.transition = '';
-      indexAbout.style.top = aboutTargetTop + 'px';
-    }
-    indexAbout.style.pointerEvents = 'auto';
-
-    // FLIP indexAuthor (AK viewer → below About)
-    const authorRect = authorNameEl.getBoundingClientRect();
-    indexAuthor.style.transition = 'none';
-    indexAuthor.style.top        = instant ? akTargetTop + 'px' : authorRect.top + 'px';
-    indexAuthor.style.opacity    = instant ? '0' : '1';
-    authorNameEl.style.transition = 'none';
-    authorNameEl.style.opacity    = '0';
-    if (!instant) {
-      indexAuthor.getBoundingClientRect();
-      indexAuthor.style.transition = '';
-      indexAuthor.style.top = akTargetTop + 'px';
-    }
-    indexAuthor.style.pointerEvents = 'auto';
-
-    // Header position (overrides CSS top: var(--pad))
-    indexHeader.style.top = headerTargetTop + 'px';
-
-    // Prev/Next
     indexNav.style.top     = navTargetTop + 'px';
     indexNav.style.opacity = '0';
     if (!instant) {
@@ -800,7 +760,7 @@ function openGridVisual(instant = false) {
     // Text elements to animate: top-bar buttons + bottom-bar (About + AK) on mobile, overlay header on desktop
     const textEls = isMobile
       ? [galleryIndexBtn, expandBtn, bottomBarEl]
-      : [indexHeader, indexAbout, indexAuthor, indexNav, indexOnview];
+      : [indexHeader, indexNav, indexOnview];
     if (isMobile) {
       textEls.forEach(el => { el.style.opacity = '0'; el.style.transition = 'none'; });
     }
@@ -835,7 +795,7 @@ function openGridVisual(instant = false) {
           } else {
             indexHeader.style.transition = '';
             indexHeader.style.opacity    = '';
-            [indexAbout, indexAuthor, indexNav, indexOnview].forEach(el => { el.style.transition = ''; });
+            [indexNav, indexOnview].forEach(el => { el.style.transition = ''; });
           }
         }, TEXT_FADE * 1000 + 50);
       });
@@ -873,37 +833,7 @@ function closeGridVisual(keepAbout = false) {
   indexOnview.style.pointerEvents = '';
   indexCols.style.paddingTop = '';
 
-  // Reverse FLIP: About and AK fly back to their viewer positions
-  if (window.innerWidth > 768) {
-    const aboutLinkRect = aboutLink.getBoundingClientRect();
-    indexAbout.style.pointerEvents = '';
-    indexAbout.style.transition = 'top 0.5s ease, opacity 0.3s ease';
-    indexAbout.style.top = aboutLinkRect.top + 'px';
-    const onDownAbout = (e) => {
-      if (e.propertyName !== 'top') return;
-      indexAbout.removeEventListener('transitionend', onDownAbout);
-      indexAbout.style.opacity = '0';
-      aboutLink.style.opacity = '';
-      aboutLink.style.transition = '';
-    };
-    indexAbout.addEventListener('transitionend', onDownAbout);
-
-    const authorRect = authorNameEl.getBoundingClientRect();
-    indexAuthor.style.pointerEvents = '';
-    indexAuthor.style.transition = 'top 0.5s ease, opacity 0.3s ease';
-    indexAuthor.style.top = authorRect.top + 'px';
-    const onDown = (e) => {
-      if (e.propertyName !== 'top') return;
-      indexAuthor.removeEventListener('transitionend', onDown);
-      indexAuthor.style.opacity = '0';
-      authorNameEl.style.opacity = '';
-      authorNameEl.style.transition = '';
-    };
-    indexAuthor.addEventListener('transitionend', onDown);
-
-    // Reset header top to CSS default (var(--pad))
-    indexHeader.style.top = '';
-  } else {
+  if (window.innerWidth <= 768) {
     indexAbout.style.opacity = '0';
     indexAbout.style.pointerEvents = '';
     indexAuthor.style.opacity = '0';
