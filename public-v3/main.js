@@ -738,39 +738,34 @@ function openGridVisual(instant = false) {
     indexHeader.style.transition = 'none';
     indexHeader.style.opacity    = '0';
 
-    // Collect viewport-visible col-units (columns whose left edge is within the screen)
+    // Collect viewport-visible col-units
     const vw = window.innerWidth;
     const visibleUnits = Array.from(indexCols.querySelectorAll('.col-unit')).filter(u => {
       const r = u.getBoundingClientRect();
       return r.left < vw && r.right > 0;
     });
 
-    // Hide photos + column texts that will cascade
+    // Collect all cascade elements: photos + column texts
+    const cascadeEls = [];
     visibleUnits.forEach(unit => {
-      unit.querySelectorAll('.col-thumb').forEach(t => {
-        t.style.opacity = '0';
-        t.style.transition = 'none';
-      });
+      unit.querySelectorAll('.col-thumb').forEach(t => cascadeEls.push(t));
       [unit.querySelector('.col-meta'), unit.querySelector('.col-gap')].forEach(el => {
-        if (el) { el.style.opacity = '0'; el.style.transition = 'none'; }
+        if (el) cascadeEls.push(el);
       });
     });
+
+    // Sort top-to-bottom by vertical position
+    cascadeEls.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+
+    // Hide all cascade elements
+    cascadeEls.forEach(el => { el.style.opacity = '0'; el.style.transition = 'none'; });
 
     expandBtn.textContent = 'Back';
 
     let introTimers = [];
-    const TEXT_FADE   = 0.4;  // s — header texts fade duration
-    const PHOTO_START = 300;  // ms — when photo cascade begins
-    const TOTAL_MS    = 2500; // target total animation time
-
-    // Count all animated elements: photos + (col-meta + col-gap) per visible unit
-    let totalEls = 0;
-    visibleUnits.forEach(u => {
-      totalEls += u.querySelectorAll('.col-thumb').length;
-      if (u.querySelector('.col-meta')) totalEls++;
-      if (u.querySelector('.col-gap'))  totalEls++;
-    });
-    const INTERVAL = totalEls > 0 ? Math.min(100, Math.floor((TOTAL_MS - PHOTO_START) / totalEls)) : 80;
+    const TEXT_FADE   = 0.4; // s
+    const PHOTO_START = 300; // ms
+    const INTERVAL    = 55;  // ms between each element
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -781,32 +776,26 @@ function openGridVisual(instant = false) {
           el.style.opacity    = '1';
         });
 
-        // 2) Photos + column texts cascade: column by column, element by element
+        // 2) Cascade top-to-bottom
         const fade = 'opacity 0.25s ease';
-        const reveal = (el, delay) => {
+        let delay = PHOTO_START;
+        cascadeEls.forEach(el => {
           introTimers.push(setTimeout(() => {
             el.style.transition = fade;
             el.style.opacity    = '1';
             setTimeout(() => { el.style.transition = ''; el.style.opacity = ''; }, 300);
           }, delay));
-        };
-
-        let delay = PHOTO_START;
-        visibleUnits.forEach(unit => {
-          unit.querySelectorAll('.col-thumb').forEach(thumb => {
-            reveal(thumb, delay);
-            delay += INTERVAL;
-          });
-          [unit.querySelector('.col-meta'), unit.querySelector('.col-gap')].forEach(el => {
-            if (el) { reveal(el, delay); delay += INTERVAL; }
-          });
+          delay += INTERVAL;
         });
 
-        // 3) Restore header text transitions when done
+        // 3) Cleanup: indexHeader can revert to CSS (its .open rule handles opacity).
+        //    indexAuthor/Nav/Onview: CSS default is opacity 0, so keep inline opacity:1
+        //    to avoid elements disappearing and breaking subsequent FLIP animations.
         introTimers.push(setTimeout(() => {
-          [indexHeader, indexAuthor, indexNav, indexOnview].forEach(el => {
+          indexHeader.style.transition = '';
+          indexHeader.style.opacity    = '';
+          [indexAuthor, indexNav, indexOnview].forEach(el => {
             el.style.transition = '';
-            el.style.opacity    = '';
           });
           introTimers = [];
         }, delay + 400));
