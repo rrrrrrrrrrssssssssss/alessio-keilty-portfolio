@@ -683,14 +683,17 @@ function openGridVisual(instant = false) {
   indexCols.scrollLeft = 0;
   indexCols.scrollTop = 0;
   gridOverlay.removeAttribute('hidden');
-  if (!instant) gridOverlay.offsetHeight; // force reflow so overlay starts from off-screen
+  if (instant) {
+    gridOverlay.style.transition = 'none'; // snap into place — no slide on initial load
+  } else {
+    gridOverlay.offsetHeight; // force reflow so overlay starts from off-screen before animating
+  }
 
   if (window.innerWidth > 768) {
     const pad = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--pad')) || 14;
     const targetTop = pad + indexTitleBtn.offsetHeight + 3;
 
     if (instant) {
-      gridOverlay.style.transition = 'none';
       indexNav.style.transition    = 'none';
       indexOnview.style.transition = 'none';
     }
