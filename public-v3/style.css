@@ -575,6 +575,13 @@ body.about-open.about-closing #viewport {
   pointer-events: none;
 }
 
+/* Mobile: skip viewport slide when About is opened directly from the index
+   (grid was covering the viewport — no need to slide it out again) */
+body.about-from-index:not(.about-closing) #viewport {
+  animation: none;
+  transform: translateX(100vw);
+}
+
 
 .contact-link {
   color: #000;
@@ -706,6 +713,7 @@ body.about-open.about-closing #viewport {
   /* Bottom bar (About + Alessio Keilty) → sopra la sidebar */
   #bottom-bar {
     bottom: 131px;
+    transition: bottom 0.35s ease;
   }
 
   #bottom-row { margin-bottom: -1px; line-height: 1.2; }

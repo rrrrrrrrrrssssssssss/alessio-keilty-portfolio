@@ -5,6 +5,7 @@ let cur = 0;
 let closeAboutTimers = [];
 let sidebarScrollRaf = null; // rAF id for the active sidebar scroll animation
 let indexWasPushed = false;  // true only when index was opened via pushState (user nav), not replaceState (landing)
+let gridHideOnEnd  = false;  // guards the transitionend→hidden so a quick reopen can't get hidden by a stale close
 
 /* ─── DOM refs ───────────────────────────────────────────────────── */
 const track       = document.getElementById('track');
@@ -505,8 +506,19 @@ function bindEvents() {
       closeAboutVisual();
       history.replaceState(null, '', location.pathname);
     } else if (window.innerWidth <= 768 && document.body.classList.contains('index-open')) {
-      // Mobile: About clicked from index → close index, open about
-      closeGridVisual(true);
+      // Mobile: About clicked from index — close index INSTANTLY (no slide) to
+      // avoid the double transition (index→viewer→about viewport slides).
+      gridOverlay.style.transition = 'none';
+      viewport.style.transition = 'none';
+      document.body.classList.add('about-from-index');
+      document.body.classList.remove('index-open');
+      gridOverlay.classList.remove('open');
+      indexWasPushed = false;
+      void gridOverlay.getBoundingClientRect();
+      gridOverlay.setAttribute('hidden', '');
+      gridOverlay.style.transition = '';
+      viewport.style.transition = '';
+      crossFadeLabel(expandBtn, 'Expand');
       if (location.hash !== '#about') history.pushState(null, '', '#about');
       openAboutVisual();
     } else {
@@ -624,7 +636,7 @@ window.addEventListener('popstate', () => {
   }
   // Forward navigation (or a direct/shared link) landing on a hash while
   // its overlay isn't open yet.
-  if (location.hash === '#index' && !gridOverlay.classList.contains('open')) {
+  if (location.hash === '#index' && !gridOverlay.classList.contains('open') && !document.body.classList.contains('about-open')) {
     openGridVisual();
   }
   if (location.hash === '#about' && !document.body.classList.contains('about-open')) {
@@ -699,6 +711,7 @@ indexAuthor.addEventListener('click', () => {
 });
 
 function openGridVisual(instant = false) {
+  gridHideOnEnd = false;
   indexCols.scrollLeft = 0;
   indexCols.scrollTop = 0;
   if (instant) {
@@ -777,13 +790,13 @@ function openGridVisual(instant = false) {
 
     expandBtn.textContent = 'Go to the viewer';
 
-    // Text elements to animate: top-bar buttons + bottom-bar (About + AK) on mobile, overlay header on desktop
+    // Text elements to fade in on landing.
+    // Mobile: texts (buttons, About/AK bar) are already visible via CSS because
+    // body.index-open is set in the HTML from page load — no JS fade-in needed.
+    // Desktop: overlay header elements start hidden and fade in here.
     const textEls = isMobile
-      ? [galleryIndexBtn, expandBtn, bottomBarEl]
+      ? []
       : [indexHeader, indexAuthor, indexNav, indexOnview];
-    if (isMobile) {
-      textEls.forEach(el => { el.style.opacity = '0'; el.style.transition = 'none'; });
-    }
 
     const TEXT_FADE   = 0.35; // s
     const PHOTO_DELAY = 300;  // ms
@@ -791,6 +804,9 @@ function openGridVisual(instant = false) {
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        // Force the browser to commit the opacity:0 state before animating.
+        // Without this reflow, Safari may skip the transition and jump to opacity:1.
+        void indexCols.offsetHeight;
         // 1) Texts fade in together
         textEls.forEach(el => {
           el.style.transition = `opacity ${TEXT_FADE}s ease`;
@@ -881,9 +897,13 @@ function closeGridVisual(keepAbout = false) {
   gridOverlay.classList.remove('open');
   document.body.classList.remove('index-open');
   crossFadeLabel(expandBtn, 'Expand');
-  gridOverlay.addEventListener('transitionend', () => {
-    gridOverlay.setAttribute('hidden', '');
-  }, { once: true });
+  gridHideOnEnd = true;
+  const onGridEnd = (e) => {
+    if (e.propertyName !== 'transform') return;
+    gridOverlay.removeEventListener('transitionend', onGridEnd);
+    if (gridHideOnEnd) gridOverlay.setAttribute('hidden', '');
+  };
+  gridOverlay.addEventListener('transitionend', onGridEnd);
 }
 
 function crossFadeLabel(el, newText) {
@@ -977,6 +997,7 @@ function closeAboutVisual() {
   closeAboutTimers.forEach(clearTimeout);
   closeAboutTimers = [];
 
+  document.body.classList.remove('about-from-index');
   if (window.innerWidth > 768) crossFadeLabel(aboutLink, 'About');
   hideMetaBack();
 
