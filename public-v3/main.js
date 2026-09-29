@@ -25,6 +25,7 @@ const aboutContent = document.getElementById('about-content');
 const authorNameEl = document.getElementById('author-name');
 const indexHeader  = document.getElementById('index-header');
 const indexTitleBtn= document.getElementById('index-title-btn');
+const indexAbout   = document.getElementById('index-about');
 const indexAuthor  = document.getElementById('index-author');
 const indexNav          = document.getElementById('index-nav');
 const indexPrev         = document.getElementById('index-prev');
@@ -673,6 +674,12 @@ indexOnview.addEventListener('click', () => {
   history.replaceState(null, '', location.pathname);
 });
 
+indexAbout.addEventListener('click', () => {
+  closeGridVisual(true);
+  if (location.hash !== '#about') history.pushState(null, '', '#about');
+  openAboutVisual();
+});
+
 indexAuthor.addEventListener('click', () => {
   closeGridVisual(true);
   if (location.hash !== '#about') history.pushState(null, '', '#about');
@@ -694,30 +701,56 @@ function openGridVisual(instant = false) {
 
   if (window.innerWidth > 768) {
     const pad = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--pad')) || 14;
-    const targetTop = pad + indexTitleBtn.offsetHeight + 3;
+    const gap = 3; // gap between stacked elements (matches main-page bottom-bar spacing)
 
     if (instant) {
       indexNav.style.transition    = 'none';
       indexOnview.style.transition = 'none';
     }
 
-    // FLIP: snap index-author to start position (always freeze transition first)
+    // Heights (opacity/position don't affect layout so safe to read now)
+    const aboutH  = indexAbout.offsetHeight;
+    const akH     = indexAuthor.offsetHeight;
+
+    // Target positions: About → AK → Header → Nav (top to bottom)
+    const aboutTargetTop  = pad;
+    const akTargetTop     = aboutTargetTop + aboutH + gap;
+    const headerTargetTop = akTargetTop    + akH    + gap;
+    const navTargetTop    = headerTargetTop + indexHeader.offsetHeight + 1.5;
+
+    // FLIP indexAbout (About link → index top)
+    const aboutLinkRect = aboutLink.getBoundingClientRect();
+    indexAbout.style.transition = 'none';
+    indexAbout.style.top        = instant ? aboutTargetTop + 'px' : aboutLinkRect.top + 'px';
+    indexAbout.style.opacity    = instant ? '0' : '1';
+    aboutLink.style.transition  = 'none';
+    aboutLink.style.opacity     = '0';
+    if (!instant) {
+      indexAbout.getBoundingClientRect();
+      indexAbout.style.transition = '';
+      indexAbout.style.top = aboutTargetTop + 'px';
+    }
+    indexAbout.style.pointerEvents = 'auto';
+
+    // FLIP indexAuthor (AK viewer → below About)
     const authorRect = authorNameEl.getBoundingClientRect();
     indexAuthor.style.transition = 'none';
-    indexAuthor.style.top        = instant ? targetTop + 'px' : authorRect.top + 'px';
+    indexAuthor.style.top        = instant ? akTargetTop + 'px' : authorRect.top + 'px';
     indexAuthor.style.opacity    = instant ? '0' : '1';
     authorNameEl.style.transition = 'none';
     authorNameEl.style.opacity    = '0';
     if (!instant) {
-      indexAuthor.getBoundingClientRect(); // flush — registers start position before animating
-      indexAuthor.style.transition = '';   // restore CSS transition
-      indexAuthor.style.top = targetTop + 'px';
+      indexAuthor.getBoundingClientRect();
+      indexAuthor.style.transition = '';
+      indexAuthor.style.top = akTargetTop + 'px';
     }
     indexAuthor.style.pointerEvents = 'auto';
 
-    // Prev/Next: appear after AK settles (instant: part of intro fade)
-    const navTargetTop = targetTop + indexAuthor.offsetHeight + 1.5;
-    indexNav.style.top = navTargetTop + 'px';
+    // Header position (overrides CSS top: var(--pad))
+    indexHeader.style.top = headerTargetTop + 'px';
+
+    // Prev/Next
+    indexNav.style.top     = navTargetTop + 'px';
     indexNav.style.opacity = '0';
     if (!instant) {
       indexNav.getBoundingClientRect();
@@ -728,7 +761,6 @@ function openGridVisual(instant = false) {
     }
 
     indexCols.style.paddingTop = (navTargetTop + indexNav.offsetHeight + 6) + 'px';
-
     updateIndexNav();
     updateIndexOnview();
     indexOnview.style.opacity = instant ? '0' : '1';
@@ -756,7 +788,7 @@ function openGridVisual(instant = false) {
     // Text elements to animate: top-bar buttons on mobile, overlay header on desktop
     const textEls = isMobile
       ? [galleryIndexBtn, expandBtn]
-      : [indexHeader, indexAuthor, indexNav, indexOnview];
+      : [indexHeader, indexAbout, indexAuthor, indexNav, indexOnview];
     if (isMobile) {
       textEls.forEach(el => { el.style.opacity = '0'; el.style.transition = 'none'; });
     }
@@ -791,7 +823,7 @@ function openGridVisual(instant = false) {
           } else {
             indexHeader.style.transition = '';
             indexHeader.style.opacity    = '';
-            [indexAuthor, indexNav, indexOnview].forEach(el => { el.style.transition = ''; });
+            [indexAbout, indexAuthor, indexNav, indexOnview].forEach(el => { el.style.transition = ''; });
           }
         }, TEXT_FADE * 1000 + 50);
       });
@@ -820,19 +852,33 @@ function closeGridVisual(keepAbout = false) {
     aboutLink.style.transition = '';
     aboutLink.style.opacity = '';
     metaBack.style.cssText = '';
+    indexAbout.style.opacity = '0';
+    indexAbout.style.pointerEvents = '';
   }
   indexNav.style.opacity = '0';
   indexOnview.style.opacity = '0';
   indexOnview.style.pointerEvents = '';
   indexCols.style.paddingTop = '';
 
-  // Animate index-author back down to the viewer position (reverse FLIP)
+  // Reverse FLIP: About and AK fly back to their viewer positions
   if (window.innerWidth > 768) {
+    const aboutLinkRect = aboutLink.getBoundingClientRect();
+    indexAbout.style.pointerEvents = '';
+    indexAbout.style.transition = 'top 0.5s ease, opacity 0.3s ease';
+    indexAbout.style.top = aboutLinkRect.top + 'px';
+    const onDownAbout = (e) => {
+      if (e.propertyName !== 'top') return;
+      indexAbout.removeEventListener('transitionend', onDownAbout);
+      indexAbout.style.opacity = '0';
+      aboutLink.style.opacity = '';
+      aboutLink.style.transition = '';
+    };
+    indexAbout.addEventListener('transitionend', onDownAbout);
+
     const authorRect = authorNameEl.getBoundingClientRect();
     indexAuthor.style.pointerEvents = '';
     indexAuthor.style.transition = 'top 0.5s ease, opacity 0.3s ease';
     indexAuthor.style.top = authorRect.top + 'px';
-    // Swap back when the slide-down finishes
     const onDown = (e) => {
       if (e.propertyName !== 'top') return;
       indexAuthor.removeEventListener('transitionend', onDown);
@@ -841,7 +887,12 @@ function closeGridVisual(keepAbout = false) {
       authorNameEl.style.transition = '';
     };
     indexAuthor.addEventListener('transitionend', onDown);
+
+    // Reset header top to CSS default (var(--pad))
+    indexHeader.style.top = '';
   } else {
+    indexAbout.style.opacity = '0';
+    indexAbout.style.pointerEvents = '';
     indexAuthor.style.opacity = '0';
     indexAuthor.style.pointerEvents = '';
     authorNameEl.style.opacity = '';
