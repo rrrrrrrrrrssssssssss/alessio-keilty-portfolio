@@ -736,11 +736,48 @@ function openGridVisual(instant = false) {
   document.body.classList.add('index-open');
 
   if (instant) {
-    // No intro animation — everything appears immediately
-    indexAuthor.style.opacity = '1';
-    indexNav.style.opacity    = '1';
-    indexOnview.style.opacity = '1';
+    // Pin indexHeader to 0 — CSS .open would snap it to 1 immediately
+    indexHeader.style.transition = 'none';
+    indexHeader.style.opacity    = '0';
+
+    // Hide all photos and column texts
+    const photoEls = Array.from(indexCols.querySelectorAll('.col-thumb, .col-meta, .col-gap'));
+    photoEls.forEach(el => { el.style.opacity = '0'; el.style.transition = 'none'; });
+
     expandBtn.textContent = 'Back';
+
+    const TEXT_FADE   = 0.35; // s — header texts
+    const PHOTO_DELAY = 300;  // ms — photos start just after texts begin
+    const PHOTO_FADE  = 0.4;  // s — all photos together
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        // 1) Header texts fade in together
+        [indexHeader, indexAuthor, indexNav, indexOnview].forEach(el => {
+          el.style.transition = `opacity ${TEXT_FADE}s ease`;
+          el.style.opacity    = '1';
+        });
+
+        // 2) All photos + column texts fade in together
+        setTimeout(() => {
+          photoEls.forEach(el => {
+            el.style.transition = `opacity ${PHOTO_FADE}s ease`;
+            el.style.opacity    = '1';
+          });
+          setTimeout(() => {
+            photoEls.forEach(el => { el.style.transition = ''; el.style.opacity = ''; });
+          }, PHOTO_FADE * 1000 + 50);
+        }, PHOTO_DELAY);
+
+        // Cleanup header texts (indexHeader reverts to CSS; others keep inline opacity:1)
+        setTimeout(() => {
+          indexHeader.style.transition = '';
+          indexHeader.style.opacity    = '';
+          [indexAuthor, indexNav, indexOnview].forEach(el => { el.style.transition = ''; });
+        }, TEXT_FADE * 1000 + 50);
+      });
+    });
+
     // Restore transitions so subsequent opens/closes animate normally
     requestAnimationFrame(() => {
       gridOverlay.style.transition = '';
