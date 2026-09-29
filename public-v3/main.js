@@ -23,6 +23,7 @@ const galleryIndexBtn = document.getElementById('gallery-index-btn');
 const metaBack     = document.getElementById('meta-back');
 const aboutContent = document.getElementById('about-content');
 const authorNameEl = document.getElementById('author-name');
+const indexHeader  = document.getElementById('index-header');
 const indexTitleBtn= document.getElementById('index-title-btn');
 const indexAuthor  = document.getElementById('index-author');
 const indexNav          = document.getElementById('index-nav');
@@ -733,32 +734,57 @@ function openGridVisual(instant = false) {
   document.body.classList.add('index-open');
 
   if (instant) {
-    // Hide overlay too, then fade everything in together
-    gridOverlay.style.opacity = '0';
-    expandBtn.textContent = 'Back'; // skip crossFadeLabel on first load
+    // Overlay stays opaque (white covers viewer instantly — no flicker).
+    // #index-header jumps to opacity:1 when .open is added; pin it back to 0 for the intro.
+    indexHeader.style.transition = 'none';
+    indexHeader.style.opacity    = '0';
+    // Hide all thumbnails for the photo cascade
+    indexCols.querySelectorAll('.col-thumb').forEach(t => {
+      t.style.opacity = '0';
+      t.style.transition = 'none';
+    });
+
+    expandBtn.textContent = 'Back';
+
+    let introTimers = [];
+    const TEXT_FADE  = 0.6;  // seconds for texts
+    const TEXT_DELAY = 80;   // ms before texts start
+    const PHOTO_START = TEXT_DELAY + TEXT_FADE * 1000 * 0.6; // photos start while texts are still fading in
+    const INTERVAL   = 55;   // ms between each photo
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        const DUR = '1s ease';
-        gridOverlay.style.transition   = `opacity ${DUR}`;
-        gridOverlay.style.opacity      = '';
-        indexAuthor.style.transition   = `opacity ${DUR}`;
-        indexAuthor.style.opacity      = '1';
-        indexNav.style.transition      = `opacity ${DUR}`;
-        indexNav.style.opacity         = '1';
-        indexOnview.style.transition   = `opacity ${DUR}`;
-        indexOnview.style.opacity      = '1';
+        // 1) Texts fade in together
+        const textT = `opacity ${TEXT_FADE}s ease`;
+        [indexHeader, indexAuthor, indexNav, indexOnview].forEach(el => {
+          el.style.transition = textT;
+          el.style.opacity    = '1';
+        });
 
-        setTimeout(() => {
-          gridOverlay.style.transition = '';
-          gridOverlay.style.opacity    = '';
-          indexAuthor.style.transition = '';
-          indexNav.style.transition    = '';
-          indexOnview.style.transition = '';
-        }, 1100);
+        // 2) Photos cascade: column by column, photo by photo
+        let delay = PHOTO_START;
+        indexCols.querySelectorAll('.col-unit').forEach(unit => {
+          unit.querySelectorAll('.col-thumb').forEach(thumb => {
+            introTimers.push(setTimeout(() => {
+              thumb.style.transition = 'opacity 0.3s ease';
+              thumb.style.opacity    = '1';
+              setTimeout(() => { thumb.style.transition = ''; thumb.style.opacity = ''; }, 350);
+            }, delay));
+            delay += INTERVAL;
+          });
+        });
+
+        // 3) Restore text transitions when done
+        introTimers.push(setTimeout(() => {
+          [indexHeader, indexAuthor, indexNav, indexOnview].forEach(el => {
+            el.style.transition = '';
+            el.style.opacity    = '';
+          });
+          introTimers = [];
+        }, delay + 400));
       });
     });
-    return; // skip the normal crossFadeLabel below
+    return;
   }
   crossFadeLabel(expandBtn, 'Back');
 }
