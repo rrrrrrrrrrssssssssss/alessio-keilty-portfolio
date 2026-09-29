@@ -682,10 +682,13 @@ indexAuthor.addEventListener('click', () => {
 function openGridVisual(instant = false) {
   indexCols.scrollLeft = 0;
   indexCols.scrollTop = 0;
-  gridOverlay.removeAttribute('hidden');
   if (instant) {
-    gridOverlay.style.transition = 'none'; // snap into place — no slide on initial load
-  } else {
+    // Freeze transform+transition BEFORE unhiding so the browser never sees translateX(100%)
+    gridOverlay.style.transition = 'none';
+    gridOverlay.style.transform  = 'translateX(0)';
+  }
+  gridOverlay.removeAttribute('hidden');
+  if (!instant) {
     gridOverlay.offsetHeight; // force reflow so overlay starts from off-screen before animating
   }
 
@@ -778,9 +781,10 @@ function openGridVisual(instant = false) {
       });
     });
 
-    // Restore transitions so subsequent opens/closes animate normally
+    // Restore transitions/transform so subsequent opens/closes animate normally
     requestAnimationFrame(() => {
       gridOverlay.style.transition = '';
+      gridOverlay.style.transform  = '';
       indexNav.style.transition    = '';
       indexOnview.style.transition = '';
     });
