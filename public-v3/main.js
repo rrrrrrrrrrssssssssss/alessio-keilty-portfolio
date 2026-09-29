@@ -733,74 +733,11 @@ function openGridVisual(instant = false) {
   document.body.classList.add('index-open');
 
   if (instant) {
-    // Overlay stays opaque (white covers viewer instantly — no flicker).
-    // #index-header jumps to opacity:1 when .open is added; pin it back to 0 for the intro.
-    indexHeader.style.transition = 'none';
-    indexHeader.style.opacity    = '0';
-
-    // Collect viewport-visible col-units
-    const vw = window.innerWidth;
-    const visibleUnits = Array.from(indexCols.querySelectorAll('.col-unit')).filter(u => {
-      const r = u.getBoundingClientRect();
-      return r.left < vw && r.right > 0;
-    });
-
-    // Collect all cascade elements: photos + column texts
-    const cascadeEls = [];
-    visibleUnits.forEach(unit => {
-      unit.querySelectorAll('.col-thumb').forEach(t => cascadeEls.push(t));
-      [unit.querySelector('.col-meta'), unit.querySelector('.col-gap')].forEach(el => {
-        if (el) cascadeEls.push(el);
-      });
-    });
-
-    // Sort top-to-bottom by vertical position
-    cascadeEls.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
-
-    // Hide all cascade elements
-    cascadeEls.forEach(el => { el.style.opacity = '0'; el.style.transition = 'none'; });
-
+    // No intro animation — everything appears immediately
+    indexAuthor.style.opacity = '1';
+    indexNav.style.opacity    = '1';
+    indexOnview.style.opacity = '1';
     expandBtn.textContent = 'Back';
-
-    let introTimers = [];
-    const TEXT_FADE   = 0.4; // s
-    const PHOTO_START = 300; // ms
-    const INTERVAL    = 55;  // ms between each element
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        // 1) Header texts fade in together
-        const textT = `opacity ${TEXT_FADE}s ease`;
-        [indexHeader, indexAuthor, indexNav, indexOnview].forEach(el => {
-          el.style.transition = textT;
-          el.style.opacity    = '1';
-        });
-
-        // 2) Cascade top-to-bottom
-        const fade = 'opacity 0.25s ease';
-        let delay = PHOTO_START;
-        cascadeEls.forEach(el => {
-          introTimers.push(setTimeout(() => {
-            el.style.transition = fade;
-            el.style.opacity    = '1';
-            setTimeout(() => { el.style.transition = ''; el.style.opacity = ''; }, 300);
-          }, delay));
-          delay += INTERVAL;
-        });
-
-        // 3) Cleanup: indexHeader can revert to CSS (its .open rule handles opacity).
-        //    indexAuthor/Nav/Onview: CSS default is opacity 0, so keep inline opacity:1
-        //    to avoid elements disappearing and breaking subsequent FLIP animations.
-        introTimers.push(setTimeout(() => {
-          indexHeader.style.transition = '';
-          indexHeader.style.opacity    = '';
-          [indexAuthor, indexNav, indexOnview].forEach(el => {
-            el.style.transition = '';
-          });
-          introTimers = [];
-        }, delay + 400));
-      });
-    });
     return;
   }
   crossFadeLabel(expandBtn, 'Back');
