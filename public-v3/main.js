@@ -713,14 +713,36 @@ function openGridVisual(instant = false) {
 
   if (window.innerWidth > 768) {
     const pad = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--pad')) || 14;
+    const gap = 3;
 
     if (instant) {
       indexNav.style.transition    = 'none';
       indexOnview.style.transition = 'none';
     }
 
-    // Header stays at its CSS default (top: var(--pad)); nav sits just below it
-    const navTargetTop = pad + indexHeader.offsetHeight + 1.5;
+    const akH = indexAuthor.offsetHeight;
+
+    // AK sits at top, header just below it, nav below header
+    const akTargetTop     = pad;
+    const headerTargetTop = akTargetTop + akH + gap;
+    const navTargetTop    = headerTargetTop + indexHeader.offsetHeight + 1.5;
+
+    // FLIP indexAuthor (AK viewer position → above header)
+    const authorRect = authorNameEl.getBoundingClientRect();
+    indexAuthor.style.transition  = 'none';
+    indexAuthor.style.top         = instant ? akTargetTop + 'px' : authorRect.top + 'px';
+    indexAuthor.style.opacity     = instant ? '0' : '1';
+    authorNameEl.style.transition = 'none';
+    authorNameEl.style.opacity    = '0';
+    if (!instant) {
+      indexAuthor.getBoundingClientRect();
+      indexAuthor.style.transition = '';
+      indexAuthor.style.top = akTargetTop + 'px';
+    }
+    indexAuthor.style.pointerEvents = 'auto';
+
+    // Header position (push down to sit below AK)
+    indexHeader.style.top = headerTargetTop + 'px';
 
     indexNav.style.top     = navTargetTop + 'px';
     indexNav.style.opacity = '0';
@@ -760,7 +782,7 @@ function openGridVisual(instant = false) {
     // Text elements to animate: top-bar buttons + bottom-bar (About + AK) on mobile, overlay header on desktop
     const textEls = isMobile
       ? [galleryIndexBtn, expandBtn, bottomBarEl]
-      : [indexHeader, indexNav, indexOnview];
+      : [indexHeader, indexAuthor, indexNav, indexOnview];
     if (isMobile) {
       textEls.forEach(el => { el.style.opacity = '0'; el.style.transition = 'none'; });
     }
@@ -795,7 +817,7 @@ function openGridVisual(instant = false) {
           } else {
             indexHeader.style.transition = '';
             indexHeader.style.opacity    = '';
-            [indexNav, indexOnview].forEach(el => { el.style.transition = ''; });
+            [indexAuthor, indexNav, indexOnview].forEach(el => { el.style.transition = ''; });
           }
         }, TEXT_FADE * 1000 + 50);
       });
@@ -833,7 +855,23 @@ function closeGridVisual(keepAbout = false) {
   indexOnview.style.pointerEvents = '';
   indexCols.style.paddingTop = '';
 
-  if (window.innerWidth <= 768) {
+  // Reverse FLIP: AK flies back to its viewer position
+  if (window.innerWidth > 768) {
+    const authorRect = authorNameEl.getBoundingClientRect();
+    indexAuthor.style.pointerEvents = '';
+    indexAuthor.style.transition = 'top 0.5s ease, opacity 0.3s ease';
+    indexAuthor.style.top = authorRect.top + 'px';
+    const onDown = (e) => {
+      if (e.propertyName !== 'top') return;
+      indexAuthor.removeEventListener('transitionend', onDown);
+      indexAuthor.style.opacity = '0';
+      authorNameEl.style.opacity = '';
+      authorNameEl.style.transition = '';
+    };
+    indexAuthor.addEventListener('transitionend', onDown);
+
+    indexHeader.style.top = '';
+  } else {
     indexAbout.style.opacity = '0';
     indexAbout.style.pointerEvents = '';
     indexAuthor.style.opacity = '0';
