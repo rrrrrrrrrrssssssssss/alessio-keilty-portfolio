@@ -733,15 +733,32 @@ function closeGridVisual(keepAbout = false) {
     aboutLink.style.opacity = '';
     metaBack.style.cssText = '';
   }
-  // Fade out the flying elements, restore the original
-  indexAuthor.style.opacity = '0';
-  indexAuthor.style.pointerEvents = '';
   indexNav.style.opacity = '0';
   indexOnview.style.opacity = '0';
   indexOnview.style.pointerEvents = '';
   indexCols.style.paddingTop = '';
-  authorNameEl.style.opacity = '';
-  authorNameEl.style.transition = '';
+
+  // Animate index-author back down to the viewer position (reverse FLIP)
+  if (window.innerWidth > 768) {
+    const authorRect = authorNameEl.getBoundingClientRect();
+    indexAuthor.style.pointerEvents = '';
+    indexAuthor.style.transition = 'top 0.5s ease, opacity 0.3s ease';
+    indexAuthor.style.top = authorRect.top + 'px';
+    // Swap back when the slide-down finishes
+    const onDown = (e) => {
+      if (e.propertyName !== 'top') return;
+      indexAuthor.removeEventListener('transitionend', onDown);
+      indexAuthor.style.opacity = '0';
+      authorNameEl.style.opacity = '';
+      authorNameEl.style.transition = '';
+    };
+    indexAuthor.addEventListener('transitionend', onDown);
+  } else {
+    indexAuthor.style.opacity = '0';
+    indexAuthor.style.pointerEvents = '';
+    authorNameEl.style.opacity = '';
+    authorNameEl.style.transition = '';
+  }
 
   gridOverlay.classList.remove('open');
   document.body.classList.remove('index-open');
