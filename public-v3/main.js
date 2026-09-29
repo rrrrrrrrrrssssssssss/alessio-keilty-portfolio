@@ -87,7 +87,7 @@ async function init() {
   if (location.hash === '#about') openAboutVisual();
   else {
     history.replaceState(null, '', '#index');
-    openGridVisual();
+    openGridVisual(true); // instant: no animation on first load
   }
 }
 
@@ -678,47 +678,67 @@ indexAuthor.addEventListener('click', () => {
   openAboutVisual();
 });
 
-function openGridVisual() {
+function openGridVisual(instant = false) {
   indexCols.scrollLeft = 0;
   indexCols.scrollTop = 0;
   gridOverlay.removeAttribute('hidden');
-  gridOverlay.offsetHeight; // force reflow: makes overlay measurable and ensures transition starts from translateX(100%)
+  if (!instant) gridOverlay.offsetHeight; // force reflow so overlay starts from off-screen
 
-  // FLIP: animate #author-name and #index-nav from viewer position into index header area
   if (window.innerWidth > 768) {
     const pad = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--pad')) || 14;
-    const targetTop = pad + indexTitleBtn.offsetHeight + 3; // 3px gap below "Index overview"
-    const authorRect = authorNameEl.getBoundingClientRect();
+    const targetTop = pad + indexTitleBtn.offsetHeight + 3;
 
-    // Snap index-author to viewer position, then animate to target
-    indexAuthor.style.transition = 'none';
-    indexAuthor.style.top = authorRect.top + 'px';
+    if (instant) {
+      // Place everything at final position with no animation
+      gridOverlay.style.transition = 'none';
+      indexAuthor.style.transition = 'none';
+      indexNav.style.transition = 'none';
+      indexOnview.style.transition = 'none';
+    }
+
+    // FLIP: index-author from viewer position → index header (skipped when instant)
+    const authorRect = authorNameEl.getBoundingClientRect();
+    indexAuthor.style.top = instant ? targetTop + 'px' : authorRect.top + 'px';
     indexAuthor.style.opacity = '1';
     authorNameEl.style.transition = 'none';
     authorNameEl.style.opacity = '0';
-    indexAuthor.getBoundingClientRect(); // snap
-    indexAuthor.style.transition = '';
-    indexAuthor.style.top = targetTop + 'px';
+    if (!instant) {
+      indexAuthor.getBoundingClientRect(); // snap
+      indexAuthor.style.transition = '';
+      indexAuthor.style.top = targetTop + 'px';
+    }
     indexAuthor.style.pointerEvents = 'auto';
 
-    // Place index-nav at target immediately (no FLIP), fade in after AK settles
+    // Prev/Next: appear after AK settles (instant: immediate)
     const navTargetTop = targetTop + indexAuthor.offsetHeight + 1.5;
-    indexNav.style.transition = 'none';
     indexNav.style.top = navTargetTop + 'px';
     indexNav.style.opacity = '0';
-    indexNav.getBoundingClientRect(); // flush
-    setTimeout(() => {
-      indexNav.style.transition = 'opacity 0.3s ease';
+    if (instant) {
       indexNav.style.opacity = '1';
-    }, 500);
+    } else {
+      indexNav.getBoundingClientRect();
+      setTimeout(() => {
+        indexNav.style.transition = 'opacity 0.3s ease';
+        indexNav.style.opacity = '1';
+      }, 500);
+    }
 
-    // Push image content 6px below nav buttons
     indexCols.style.paddingTop = (navTargetTop + indexNav.offsetHeight + 6) + 'px';
 
     updateIndexNav();
     updateIndexOnview();
     indexOnview.style.opacity = '1';
     indexOnview.style.pointerEvents = 'auto';
+
+    if (instant) {
+      // Restore transitions after a frame so subsequent interactions animate normally
+      requestAnimationFrame(() => {
+        gridOverlay.style.transition = '';
+        indexAuthor.style.transition = '';
+        indexNav.style.transition = '';
+        indexOnview.style.transition = '';
+      });
+    }
   }
 
   gridOverlay.classList.add('open');
