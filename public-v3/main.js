@@ -494,7 +494,12 @@ function bindEvents() {
   });
   aboutLink.addEventListener('click', e => {
     e.stopPropagation();
-    document.body.classList.contains('about-open') ? closeAbout() : openAbout();
+    if (document.body.classList.contains('about-open')) {
+      closeAboutVisual();
+      history.replaceState(null, '', location.pathname);
+    } else {
+      openAbout();
+    }
   });
   metaClient.addEventListener('click', closeAbout);
   metaTitle.addEventListener('click', closeAbout);
@@ -826,7 +831,7 @@ function openAboutVisual() {
   closeAboutTimers.forEach(clearTimeout);
   closeAboutTimers = [];
   document.body.classList.remove('about-closing');
-  crossFadeLabel(aboutLink, 'Back');
+  crossFadeLabel(aboutLink, 'On view');
   showMetaBack();
   document.body.classList.add('about-open');
 }
