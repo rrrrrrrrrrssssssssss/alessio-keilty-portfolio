@@ -756,12 +756,21 @@ function openGridVisual(instant = false) {
     // Defer class adds to next frame so the browser paints translateX(100%)
     // first, guaranteeing the CSS transition fires (element was just shown).
     requestAnimationFrame(() => {
+      // Hide meta-group instantly (no transition) — prevents text flash near AK
+      // when body.index-open { opacity:0 } would otherwise trigger a 0.5s fade.
+      const metaGroupEl = document.getElementById('meta-group');
+      metaGroupEl.style.transition = 'none';
+      void metaGroupEl.offsetHeight; // commit transition:none before index-open fires
       // Hide bar text instantly so it can fade in last after the slide.
       aboutLink.style.opacity = '0';
       authorNameEl.style.opacity = '0';
       document.body.classList.add('index-open');
       gridOverlay.classList.add('open');
       crossFadeLabel(expandBtn, 'Go to the viewer');
+      // Restore CSS transition on meta-group so it fades in on close.
+      requestAnimationFrame(() => {
+        metaGroupEl.style.transition = '';
+      });
       // Fade bar text in after the 350ms slide completes (last element to appear).
       setTimeout(() => {
         if (!document.body.classList.contains('index-open')) return;

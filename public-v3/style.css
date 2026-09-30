@@ -688,6 +688,7 @@ body.about-to-index.about-open.about-closing #viewport {
     bottom: 48px;
     height: auto;
     flex-direction: column;
+    transition: opacity 0.35s ease;
   }
 
   #sidebar-counter {
@@ -809,9 +810,9 @@ body.about-to-index.about-open.about-closing #viewport {
     opacity: 0;
     pointer-events: none;
   }
-  /* meta-group fades with index open/close (0.2s) */
+  /* meta-group fades with index open/close */
   #meta-group {
-    transition: opacity 0.2s ease;
+    transition: opacity 0.5s ease;
   }
 
   /* Keep viewer content hidden during the 0.35s close slide. */
@@ -866,7 +867,7 @@ body.about-to-index.about-open.about-closing #viewport {
   }
   body.index-open #sidebar-area {
     transform: none;
-    opacity: 1;
+    opacity: 0;
   }
 
   /* Header duplicated inside the overlay is unused on mobile: the fixed
