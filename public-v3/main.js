@@ -512,6 +512,7 @@ function bindEvents() {
       // avoid the double transition (index→viewer→about viewport slides).
       gridOverlay.style.transition = 'none';
       viewport.style.transition = 'none'; // kept suppressed through openAboutVisual
+      bottomBarEl.style.transition = 'none'; // snap bar to viewer position (no slide)
       document.body.classList.add('about-from-index');
       document.body.classList.remove('index-open');
       gridOverlay.classList.remove('open');
@@ -519,12 +520,12 @@ function bindEvents() {
       void gridOverlay.getBoundingClientRect();
       gridOverlay.setAttribute('hidden', '');
       gridOverlay.style.transition = '';
-      // viewport.style.transition restored after about-open is set, so the CSS
-      // transition from 0→100vw can't fire during the class change.
+      // viewport.style.transition and bottomBarEl.style.transition restored after
+      // about-open is set, so CSS transitions can't fire during the class change.
       crossFadeLabel(expandBtn, 'Expand');
       if (location.hash !== '#about') history.pushState(null, '', '#about');
       openAboutVisual();
-      requestAnimationFrame(() => { viewport.style.transition = ''; });
+      requestAnimationFrame(() => { viewport.style.transition = ''; bottomBarEl.style.transition = ''; });
     } else {
       openAbout();
     }
@@ -548,6 +549,7 @@ function bindEvents() {
         // Mobile index → About: instant grid close (no slide), suppress viewport animation
         gridOverlay.style.transition = 'none';
         viewport.style.transition = 'none';
+        bottomBarEl.style.transition = 'none'; // snap bar to viewer position (no slide)
         document.body.classList.add('about-from-index');
         document.body.classList.remove('index-open');
         gridOverlay.classList.remove('open');
@@ -558,7 +560,7 @@ function bindEvents() {
         crossFadeLabel(expandBtn, 'Expand');
         if (location.hash !== '#about') history.pushState(null, '', '#about');
         openAboutVisual();
-        requestAnimationFrame(() => { viewport.style.transition = ''; });
+        requestAnimationFrame(() => { viewport.style.transition = ''; bottomBarEl.style.transition = ''; });
       } else {
         // Desktop index → About: slide grid out, then open about
         closeGridVisual(true);
@@ -761,9 +763,6 @@ function openGridVisual(instant = false) {
       const metaGroupEl = document.getElementById('meta-group');
       metaGroupEl.style.transition = 'none';
       void metaGroupEl.offsetHeight; // commit transition:none before index-open fires
-      // Hide bar text instantly so it can fade in last after the slide.
-      aboutLink.style.opacity = '0';
-      authorNameEl.style.opacity = '0';
       document.body.classList.add('index-open');
       gridOverlay.classList.add('open');
       crossFadeLabel(expandBtn, 'Go to the viewer');
@@ -771,21 +770,6 @@ function openGridVisual(instant = false) {
       requestAnimationFrame(() => {
         metaGroupEl.style.transition = '';
       });
-      // Fade bar text in after the 350ms slide completes (last element to appear).
-      setTimeout(() => {
-        if (!document.body.classList.contains('index-open')) return;
-        aboutLink.style.transition = 'opacity 0.25s ease';
-        aboutLink.style.opacity = '1';
-        authorNameEl.style.transition = 'opacity 0.25s ease';
-        authorNameEl.style.opacity = '1';
-        setTimeout(() => {
-          if (!document.body.classList.contains('index-open')) return;
-          aboutLink.style.transition = '';
-          aboutLink.style.opacity = '';
-          authorNameEl.style.transition = '';
-          authorNameEl.style.opacity = '';
-        }, 300);
-      }, 360);
     });
     return;
   }
@@ -977,36 +961,16 @@ function closeGridVisual(keepAbout = false) {
     indexAbout.style.pointerEvents = '';
     indexAuthor.style.opacity = '0';
     indexAuthor.style.pointerEvents = '';
-    authorNameEl.style.transition = '';
-    authorNameEl.style.opacity = '';
-    // Bar text is first to disappear: fade out about-link before the grid slides.
-    // author-name is handled by body.index-closing { opacity: 0 !important } CSS.
-    aboutLink.style.transition = 'opacity 0.15s ease';
-    aboutLink.style.opacity = '0';
   }
 
   gridOverlay.style.transition = '';  // ensure CSS transition is active (rAF may not have run)
   gridOverlay.style.opacity = '';     // clear any inline pin from instant open
   gridOverlay.classList.remove('open');
-  // On mobile: keep bars/content in index state for the 0.35s slide-out
+  // On mobile: keep meta-group/about-content hidden for the 0.35s slide-out
   if (window.innerWidth <= 768) {
     document.body.classList.add('index-closing');
     setTimeout(() => {
-      // Pin at 0 before !important CSS lifts, then fade in (first frame commits it).
-      authorNameEl.style.opacity = '0';
       document.body.classList.remove('index-closing');
-      requestAnimationFrame(() => {
-        aboutLink.style.transition = 'opacity 0.2s ease';
-        aboutLink.style.opacity = '1';
-        authorNameEl.style.transition = 'opacity 0.2s ease';
-        authorNameEl.style.opacity = '1';
-        setTimeout(() => {
-          aboutLink.style.transition = '';
-          aboutLink.style.opacity = '';
-          authorNameEl.style.transition = '';
-          authorNameEl.style.opacity = '';
-        }, 250);
-      });
     }, 360);
   }
   document.body.classList.remove('index-open');

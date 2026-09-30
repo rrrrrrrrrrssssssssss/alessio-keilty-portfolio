@@ -726,6 +726,9 @@ body.about-to-index.about-open.about-closing #viewport {
   /* Bottom bar (About + Alessio Keilty) → sopra la sidebar */
   #bottom-bar {
     bottom: 131px;
+    left: 0;
+    right: 0;
+    padding: 6px var(--pad) 0;
     transition: transform 0.35s ease;
   }
 
@@ -796,9 +799,6 @@ body.about-to-index.about-open.about-closing #viewport {
     opacity: 1;
     pointer-events: auto;
     transform: translateY(90px);
-    left: 0;
-    right: 0;
-    padding: 6px var(--pad) 0;
     z-index: 60;
   }
 
@@ -823,22 +823,10 @@ body.about-to-index.about-open.about-closing #viewport {
     opacity: 0 !important;
     pointer-events: none;
   }
-  /* Hide bottom-row text and author-name during close slide;
-     they are faded in via JS after the animation. */
-  body.index-closing #bottom-row {
-    opacity: 0;
-  }
-  body.index-closing #author-name {
-    opacity: 0 !important;  /* overrides inline '' restored by closeGridVisual */
-  }
-
   /* Bars animate freely to viewer position during close; keep layout
      properties stable so there's no width/padding jump mid-animation. */
   body.index-closing #bottom-bar {
     pointer-events: none;
-    left: 0;
-    right: 0;
-    padding: 6px var(--pad) 0;
     z-index: 60;
   }
 
