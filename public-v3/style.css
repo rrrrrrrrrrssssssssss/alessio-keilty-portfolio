@@ -720,7 +720,7 @@ body.about-to-index.about-open.about-closing #viewport {
   /* Bottom bar (About + Alessio Keilty) → sopra la sidebar */
   #bottom-bar {
     bottom: 131px;
-    transition: bottom 0.35s ease, background-color 0.35s ease;
+    transition: none;
   }
 
   #bottom-row { margin-bottom: -1px; line-height: 1.2; }
@@ -779,7 +779,8 @@ body.about-to-index.about-open.about-closing #viewport {
   /* Hide mobile text bars during data loading (body.preload in HTML); JS removes
      this class and fades them in once the index content is ready. */
   body.preload #top-bar,
-  body.preload #bottom-bar {
+  body.preload #bottom-bar,
+  body.preload #sidebar-area {
     opacity: 0 !important;
     pointer-events: none !important;
     transition: none !important;

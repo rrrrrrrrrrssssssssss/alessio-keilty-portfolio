@@ -748,9 +748,17 @@ function openGridVisual(instant = false) {
     gridOverlay.style.transform  = 'translateX(0)';
     gridOverlay.style.opacity    = '1';
   }
+  // Mobile non-instant: snap bars to their index positions BEFORE the grid
+  // fades in, so they are already in place during the animation.
+  const mobileNonInstant = !instant && window.innerWidth <= 768;
+  if (mobileNonInstant) {
+    document.body.classList.add('index-open');
+    void bottomBarEl.offsetHeight; // commit instant snap
+  }
+
   gridOverlay.removeAttribute('hidden');
   if (!instant) {
-    gridOverlay.offsetHeight; // force reflow so overlay starts from off-screen before animating
+    gridOverlay.offsetHeight; // force reflow so overlay starts from opacity:0 before animating
   }
 
   if (window.innerWidth > 768) {
@@ -802,7 +810,9 @@ function openGridVisual(instant = false) {
   }
 
   gridOverlay.classList.add('open');
-  document.body.classList.add('index-open');
+  if (!mobileNonInstant) {
+    document.body.classList.add('index-open');
+  }
 
   if (instant) {
     const isMobile    = window.innerWidth <= 768;
@@ -939,13 +949,18 @@ function closeGridVisual(keepAbout = false) {
 
   gridOverlay.style.opacity = '';  // clear any inline pin from instant open so CSS fade-out can run
   gridOverlay.classList.remove('open');
-  document.body.classList.remove('index-open');
+  // Desktop: remove index-open with the grid so viewer slides back in sync.
+  // Mobile: delay until after the grid is hidden so bars stay in place during the fade-out.
+  if (window.innerWidth > 768) document.body.classList.remove('index-open');
   crossFadeLabel(expandBtn, 'Expand');
   gridHideOnEnd = true;
   const onGridEnd = (e) => {
     if (e.target !== gridOverlay) return;
     gridOverlay.removeEventListener('transitionend', onGridEnd);
-    if (gridHideOnEnd) gridOverlay.setAttribute('hidden', '');
+    if (gridHideOnEnd) {
+      gridOverlay.setAttribute('hidden', '');
+      document.body.classList.remove('index-open'); // mobile: snap bars back after grid is gone
+    }
   };
   gridOverlay.addEventListener('transitionend', onGridEnd);
 }
