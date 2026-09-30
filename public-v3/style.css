@@ -806,9 +806,10 @@ body.about-to-index.about-open.about-closing #viewport {
     display: none;
   }
 
-  /* Extra bottom clearance: About+AK bar (bottom:41px, ~38px tall) + button bar */
+  /* Grid overlay padding-bottom clips the scroll area above the bars.
+     No extra content padding needed — 0 lets content fill to the clip edge. */
   body.index-open #index-cols {
-    padding-bottom: 96px;
+    padding-bottom: 0;
   }
 
   /* On mobile the index appears as a fade-in overlay on top of the viewer
@@ -819,6 +820,8 @@ body.about-to-index.about-open.about-closing #viewport {
     transform: none;
     opacity: 0;
     transition: opacity 0.35s ease;
+    /* Clip content area above the bottom bars (About bar top ≈ 82px) */
+    padding-bottom: 96px;
   }
   #grid-overlay.open {
     opacity: 1;
