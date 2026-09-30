@@ -3,6 +3,7 @@ let items = [];   // [{ image, project, projectImages }]
 let N = 0;
 let cur = 0;
 let closeAboutTimers = [];
+const crossFadeTimers = new WeakMap();
 let sidebarScrollRaf = null; // rAF id for the active sidebar scroll animation
 let indexWasPushed = false;  // true only when index was opened via pushState (user nav), not replaceState (landing)
 let gridHideOnEnd  = false;  // guards the transitionend→hidden so a quick reopen can't get hidden by a stale close
@@ -970,14 +971,25 @@ function closeGridVisual(keepAbout = false) {
 }
 
 function crossFadeLabel(el, newText) {
+  // Cancel any pending fade so a stale timer can't overwrite the correct text
+  const pending = crossFadeTimers.get(el);
+  if (pending) {
+    clearTimeout(pending);
+    crossFadeTimers.delete(el);
+    el.style.transition = 'none';
+    el.style.opacity = '1';
+    el.getBoundingClientRect();
+    el.style.transition = '';
+    el.style.opacity = '';
+  }
   if (el.textContent === newText) return;
-  // Kill any in-progress transition (avoids iOS race with :active release)
   el.style.transition = 'none';
   el.getBoundingClientRect();
   el.style.transition = 'opacity 0.12s ease';
   el.getBoundingClientRect();
   el.style.opacity = '0';
-  setTimeout(() => {
+  const timer = setTimeout(() => {
+    crossFadeTimers.delete(el);
     el.textContent = newText;
     el.style.transition = 'opacity 0.2s ease';
     el.style.opacity = '1';
@@ -986,6 +998,7 @@ function crossFadeLabel(el, newText) {
       el.style.opacity = '';
     }, 250);
   }, 150);
+  crossFadeTimers.set(el, timer);
 }
 
 function showMetaBack() {
