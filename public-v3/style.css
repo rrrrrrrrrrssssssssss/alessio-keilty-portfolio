@@ -688,7 +688,7 @@ body.about-to-index.about-open.about-closing #viewport {
     bottom: 48px;
     height: auto;
     flex-direction: column;
-    transition: opacity 0.35s ease;
+    transition: opacity 0.35s ease 0.35s;
   }
 
   #sidebar-counter {
@@ -799,6 +799,7 @@ body.about-to-index.about-open.about-closing #viewport {
     opacity: 1;
     pointer-events: auto;
     transform: translateY(90px);
+    transition: transform 0.35s ease 0.35s;
     z-index: 60;
   }
 
@@ -856,6 +857,7 @@ body.about-to-index.about-open.about-closing #viewport {
   body.index-open #sidebar-area {
     transform: none;
     opacity: 0;
+    transition: opacity 0.35s ease;
   }
 
   /* Header duplicated inside the overlay is unused on mobile: the fixed
