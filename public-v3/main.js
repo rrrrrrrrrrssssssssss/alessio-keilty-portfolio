@@ -949,18 +949,13 @@ function closeGridVisual(keepAbout = false) {
 
   gridOverlay.style.opacity = '';  // clear any inline pin from instant open so CSS fade-out can run
   gridOverlay.classList.remove('open');
-  // Desktop: remove index-open with the grid so viewer slides back in sync.
-  // Mobile: delay until after the grid is hidden so bars stay in place during the fade-out.
-  if (window.innerWidth > 768) document.body.classList.remove('index-open');
+  document.body.classList.remove('index-open');
   crossFadeLabel(expandBtn, 'Expand');
   gridHideOnEnd = true;
   const onGridEnd = (e) => {
     if (e.target !== gridOverlay) return;
     gridOverlay.removeEventListener('transitionend', onGridEnd);
-    if (gridHideOnEnd) {
-      gridOverlay.setAttribute('hidden', '');
-      document.body.classList.remove('index-open'); // mobile: snap bars back after grid is gone
-    }
+    if (gridHideOnEnd) gridOverlay.setAttribute('hidden', '');
   };
   gridOverlay.addEventListener('transitionend', onGridEnd);
 }

@@ -720,7 +720,7 @@ body.about-to-index.about-open.about-closing #viewport {
   /* Bottom bar (About + Alessio Keilty) → sopra la sidebar */
   #bottom-bar {
     bottom: 131px;
-    transition: none;
+    transition: bottom 0.35s ease;
   }
 
   #bottom-row { margin-bottom: -1px; line-height: 1.2; }
