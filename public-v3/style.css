@@ -821,7 +821,7 @@ body.about-to-index.about-open.about-closing #viewport {
     opacity: 0;
     transition: opacity 0.35s ease;
     /* Clip content area above the bottom bars (About bar top ≈ 82px) */
-    padding-bottom: 96px;
+    padding-bottom: 80px;
   }
   #grid-overlay.open {
     opacity: 1;
