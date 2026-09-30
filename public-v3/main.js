@@ -749,6 +749,12 @@ function openGridVisual(instant = false) {
       const metaGroupEl = document.getElementById('meta-group');
       metaGroupEl.style.transition = 'none';
       void metaGroupEl.offsetHeight; // commit transition:none before index-open fires
+      // Reset about-link label to "About" if we're entering index from about
+      if (document.body.classList.contains('about-open')) {
+        aboutLink.textContent = 'About';
+        aboutLink.style.transition = '';
+        aboutLink.style.opacity = '';
+      }
       document.body.classList.add('index-open');
       gridOverlay.classList.add('open');
       crossFadeLabel(expandBtn, 'Go to the viewer');
@@ -960,6 +966,10 @@ function closeGridVisual(keepAbout = false) {
     }, 360);
   }
   document.body.classList.remove('index-open');
+  // Returning to about from index: restore "Back" label (was reset to "About" on index open)
+  if (keepAbout && document.body.classList.contains('about-open') && window.innerWidth <= 768) {
+    crossFadeLabel(aboutLink, 'Back');
+  }
   crossFadeLabel(expandBtn, 'Expand');
   gridHideOnEnd = true;
   const onGridEnd = (e) => {
