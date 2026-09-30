@@ -508,24 +508,16 @@ function bindEvents() {
       closeAboutVisual();
       history.replaceState(null, '', location.pathname);
     } else if (window.innerWidth <= 768 && document.body.classList.contains('index-open')) {
-      // Mobile: About clicked from index — close index INSTANTLY (no slide) to
-      // avoid the double transition (index→viewer→about viewport slides).
-      gridOverlay.style.transition = 'none';
-      viewport.style.transition = 'none'; // kept suppressed through openAboutVisual
-      bottomBarEl.style.transition = 'none'; // snap bar to viewer position (no slide)
+      // Mobile: About from index — same slide-out as going to viewer.
+      // about-from-index suppresses the viewport animation (CSS), viewport.transition
+      // must be 'none' when index-open is removed so it snaps (not slides) to 100vw.
       document.body.classList.add('about-from-index');
-      document.body.classList.remove('index-open');
-      gridOverlay.classList.remove('open');
-      indexWasPushed = false;
-      void gridOverlay.getBoundingClientRect();
-      gridOverlay.setAttribute('hidden', '');
-      gridOverlay.style.transition = '';
-      // viewport.style.transition and bottomBarEl.style.transition restored after
-      // about-open is set, so CSS transitions can't fire during the class change.
-      crossFadeLabel(expandBtn, 'Expand');
+      viewport.style.transition = 'none';
+      void viewport.getBoundingClientRect();
+      closeGridVisual(false); // grid slides right, bar slides to viewer pos, sidebar fades in
       if (location.hash !== '#about') history.pushState(null, '', '#about');
       openAboutVisual();
-      requestAnimationFrame(() => { viewport.style.transition = ''; bottomBarEl.style.transition = ''; });
+      requestAnimationFrame(() => { viewport.style.transition = ''; });
     } else {
       openAbout();
     }
@@ -546,21 +538,14 @@ function bindEvents() {
       closeAbout();
     } else if (gridOverlay.classList.contains('open')) {
       if (window.innerWidth <= 768) {
-        // Mobile index → About: instant grid close (no slide), suppress viewport animation
-        gridOverlay.style.transition = 'none';
-        viewport.style.transition = 'none';
-        bottomBarEl.style.transition = 'none'; // snap bar to viewer position (no slide)
+        // Mobile index → About: same slide-out as going to viewer.
         document.body.classList.add('about-from-index');
-        document.body.classList.remove('index-open');
-        gridOverlay.classList.remove('open');
-        indexWasPushed = false;
-        void gridOverlay.getBoundingClientRect();
-        gridOverlay.setAttribute('hidden', '');
-        gridOverlay.style.transition = '';
-        crossFadeLabel(expandBtn, 'Expand');
+        viewport.style.transition = 'none';
+        void viewport.getBoundingClientRect();
+        closeGridVisual(false); // grid slides right, bar slides to viewer pos, sidebar fades in
         if (location.hash !== '#about') history.pushState(null, '', '#about');
         openAboutVisual();
-        requestAnimationFrame(() => { viewport.style.transition = ''; bottomBarEl.style.transition = ''; });
+        requestAnimationFrame(() => { viewport.style.transition = ''; });
       } else {
         // Desktop index → About: slide grid out, then open about
         closeGridVisual(true);
@@ -927,7 +912,7 @@ function closeGridVisual(keepAbout = false) {
     // Calling closeAboutVisual() here would trigger its viewport transitions and fight the grid slide-out.
     closeAboutTimers.forEach(clearTimeout);
     closeAboutTimers = [];
-    document.body.classList.remove('about-open', 'about-closing');
+    document.body.classList.remove('about-open', 'about-closing', 'about-from-index');
     aboutLink.textContent = 'About';
     aboutLink.style.transition = '';
     aboutLink.style.opacity = '';
@@ -1084,7 +1069,7 @@ function closeAboutVisual() {
   document.body.classList.add('about-closing');
 
   closeAboutTimers.push(setTimeout(() => {
-    document.body.classList.remove('about-open', 'about-closing', 'about-to-index');
+    document.body.classList.remove('about-open', 'about-closing', 'about-to-index', 'about-from-index');
   }, 800));
 }
 
