@@ -535,7 +535,7 @@ function bindEvents() {
     history.replaceState(null, '', location.pathname);
   });
   authorNameEl.addEventListener('click', () => {
-    if (document.body.classList.contains('about-open')) {
+    if (document.body.classList.contains('about-open') && !document.body.classList.contains('index-open')) {
       closeAbout();
     } else if (gridOverlay.classList.contains('open')) {
       if (window.innerWidth <= 768) {
