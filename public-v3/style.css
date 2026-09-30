@@ -290,6 +290,11 @@ body.index-open #bottom-bar {
   transform: translateX(0);
 }
 
+/* Prevent grid from blocking the viewer during close fade-out */
+#grid-overlay:not(.open) {
+  pointer-events: none;
+}
+
 #grid-overlay #index-cols,
 #grid-overlay #index-header {
   opacity: 0;
@@ -720,7 +725,7 @@ body.about-to-index.about-open.about-closing #viewport {
   /* Bottom bar (About + Alessio Keilty) → sopra la sidebar */
   #bottom-bar {
     bottom: 131px;
-    transition: bottom 0.35s ease;
+    transition: transform 0.35s ease;
   }
 
   #bottom-row { margin-bottom: -1px; line-height: 1.2; }
@@ -769,7 +774,6 @@ body.about-to-index.about-open.about-closing #viewport {
     opacity: 1;
     pointer-events: auto;
     z-index: 60;
-    background: #fff;
     left: 0;
     right: 0;
     bottom: 0;
@@ -790,11 +794,10 @@ body.about-to-index.about-open.about-closing #viewport {
   body.index-open #bottom-bar {
     opacity: 1;
     pointer-events: auto;
-    bottom: 41px;
+    transform: translateY(90px);
     left: 0;
     right: 0;
     padding: 6px var(--pad) 0;
-    background: #fff;
     z-index: 60;
   }
 

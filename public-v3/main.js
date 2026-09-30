@@ -748,12 +748,18 @@ function openGridVisual(instant = false) {
     gridOverlay.style.transform  = 'translateX(0)';
     gridOverlay.style.opacity    = '1';
   }
-  // Mobile non-instant: snap bars to their index positions BEFORE the grid
-  // fades in, so they are already in place during the animation.
+  // Mobile non-instant: show white grid background instantly, then animate bars over it.
   const mobileNonInstant = !instant && window.innerWidth <= 768;
   if (mobileNonInstant) {
+    gridOverlay.style.transition = 'none';
+    gridOverlay.style.opacity = '1';
+    gridOverlay.removeAttribute('hidden');
+    gridOverlay.offsetHeight;             // commit so .open triggers content fade from opacity:0
     document.body.classList.add('index-open');
-    void bottomBarEl.offsetHeight; // commit instant snap
+    gridOverlay.classList.add('open');
+    requestAnimationFrame(() => { gridOverlay.style.transition = ''; }); // restore for close
+    crossFadeLabel(expandBtn, 'Go to the viewer');
+    return;
   }
 
   gridOverlay.removeAttribute('hidden');
@@ -947,6 +953,7 @@ function closeGridVisual(keepAbout = false) {
     authorNameEl.style.transition = '';
   }
 
+  gridOverlay.style.transition = '';  // ensure CSS transition is active (rAF may not have run)
   gridOverlay.style.opacity = '';  // clear any inline pin from instant open so CSS fade-out can run
   gridOverlay.classList.remove('open');
   document.body.classList.remove('index-open');
