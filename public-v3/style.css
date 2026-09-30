@@ -799,7 +799,7 @@ body.about-to-index.about-open.about-closing #viewport {
     opacity: 1;
     pointer-events: auto;
     transform: translateY(90px);
-    transition: transform 0.35s ease 0.35s;
+    transition: transform 0.35s ease 0.2s;
     z-index: 60;
   }
 
