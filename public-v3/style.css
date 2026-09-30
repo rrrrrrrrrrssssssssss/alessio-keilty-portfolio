@@ -801,17 +801,34 @@ body.about-to-index.about-open.about-closing #viewport {
     z-index: 60;
   }
 
-  body.index-open #about-content,
-  body.index-open #meta-group {
+  body.index-open #about-content {
     display: none;
   }
+  /* meta-group uses opacity (not display:none) so it can fade in/out */
+  body.index-open #meta-group {
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* meta-group fades with index open/close (0.2s) */
+  #meta-group {
+    transition: opacity 0.2s ease;
+  }
 
-  /* Keep viewer content hidden during the 0.35s close slide.
-     !important overrides any inline opacity/display set by JS. */
-  body.index-closing #about-content,
-  body.index-closing #meta-group,
-  body.index-closing #meta-back {
+  /* Keep viewer content hidden during the 0.35s close slide. */
+  body.index-closing #about-content {
     display: none !important;
+  }
+  body.index-closing #meta-group {
+    opacity: 0 !important;
+    pointer-events: none;
+  }
+  /* Hide bottom-row text and author-name during close slide;
+     they are faded in via JS after the animation. */
+  body.index-closing #bottom-row {
+    opacity: 0;
+  }
+  body.index-closing #author-name {
+    opacity: 0 !important;  /* overrides inline '' restored by closeGridVisual */
   }
 
   /* Bars animate freely to viewer position during close; keep layout
@@ -836,7 +853,7 @@ body.about-to-index.about-open.about-closing #viewport {
     display: flex;
     flex-direction: column;
     transition: transform 0.35s ease;
-    padding-bottom: 70px;
+    padding-bottom: 80px;
   }
   #grid-overlay[hidden] { display: none !important; }
 

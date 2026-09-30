@@ -756,9 +756,27 @@ function openGridVisual(instant = false) {
     // Defer class adds to next frame so the browser paints translateX(100%)
     // first, guaranteeing the CSS transition fires (element was just shown).
     requestAnimationFrame(() => {
+      // Hide bar text instantly so it can fade in last after the slide.
+      aboutLink.style.opacity = '0';
+      authorNameEl.style.opacity = '0';
       document.body.classList.add('index-open');
       gridOverlay.classList.add('open');
       crossFadeLabel(expandBtn, 'Go to the viewer');
+      // Fade bar text in after the 350ms slide completes (last element to appear).
+      setTimeout(() => {
+        if (!document.body.classList.contains('index-open')) return;
+        aboutLink.style.transition = 'opacity 0.25s ease';
+        aboutLink.style.opacity = '1';
+        authorNameEl.style.transition = 'opacity 0.25s ease';
+        authorNameEl.style.opacity = '1';
+        setTimeout(() => {
+          if (!document.body.classList.contains('index-open')) return;
+          aboutLink.style.transition = '';
+          aboutLink.style.opacity = '';
+          authorNameEl.style.transition = '';
+          authorNameEl.style.opacity = '';
+        }, 300);
+      }, 360);
     });
     return;
   }
@@ -950,8 +968,12 @@ function closeGridVisual(keepAbout = false) {
     indexAbout.style.pointerEvents = '';
     indexAuthor.style.opacity = '0';
     indexAuthor.style.pointerEvents = '';
-    authorNameEl.style.opacity = '';
     authorNameEl.style.transition = '';
+    authorNameEl.style.opacity = '';
+    // Bar text is first to disappear: fade out about-link before the grid slides.
+    // author-name is handled by body.index-closing { opacity: 0 !important } CSS.
+    aboutLink.style.transition = 'opacity 0.15s ease';
+    aboutLink.style.opacity = '0';
   }
 
   gridOverlay.style.transition = '';  // ensure CSS transition is active (rAF may not have run)
@@ -960,7 +982,23 @@ function closeGridVisual(keepAbout = false) {
   // On mobile: keep bars/content in index state for the 0.35s slide-out
   if (window.innerWidth <= 768) {
     document.body.classList.add('index-closing');
-    setTimeout(() => document.body.classList.remove('index-closing'), 360);
+    setTimeout(() => {
+      // Pin at 0 before !important CSS lifts, then fade in (first frame commits it).
+      authorNameEl.style.opacity = '0';
+      document.body.classList.remove('index-closing');
+      requestAnimationFrame(() => {
+        aboutLink.style.transition = 'opacity 0.2s ease';
+        aboutLink.style.opacity = '1';
+        authorNameEl.style.transition = 'opacity 0.2s ease';
+        authorNameEl.style.opacity = '1';
+        setTimeout(() => {
+          aboutLink.style.transition = '';
+          aboutLink.style.opacity = '';
+          authorNameEl.style.transition = '';
+          authorNameEl.style.opacity = '';
+        }, 250);
+      });
+    }, 360);
   }
   document.body.classList.remove('index-open');
   crossFadeLabel(expandBtn, 'Expand');
