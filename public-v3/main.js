@@ -752,10 +752,14 @@ function openGridVisual(instant = false) {
   const mobileNonInstant = !instant && window.innerWidth <= 768;
   if (mobileNonInstant) {
     gridOverlay.removeAttribute('hidden');
-    gridOverlay.offsetHeight;  // commit translateX(100%) so transition fires on .open
-    document.body.classList.add('index-open');
-    gridOverlay.classList.add('open');
-    crossFadeLabel(expandBtn, 'Go to the viewer');
+    gridOverlay.offsetHeight;  // commit display:flex at translateX(100%)
+    // Defer class adds to next frame so the browser paints translateX(100%)
+    // first, guaranteeing the CSS transition fires (element was just shown).
+    requestAnimationFrame(() => {
+      document.body.classList.add('index-open');
+      gridOverlay.classList.add('open');
+      crossFadeLabel(expandBtn, 'Go to the viewer');
+    });
     return;
   }
 

@@ -806,22 +806,22 @@ body.about-to-index.about-open.about-closing #viewport {
     display: none;
   }
 
-  /* Keep viewer content hidden while the bars slide back during close */
+  /* Keep viewer content hidden during the 0.35s close slide.
+     !important overrides any inline opacity/display set by JS. */
   body.index-closing #about-content,
-  body.index-closing #meta-group {
-    display: none;
+  body.index-closing #meta-group,
+  body.index-closing #meta-back {
+    display: none !important;
   }
 
-  /* Keep bars in index position during the 0.35s close slide */
+  /* Bars animate freely to viewer position during close; keep layout
+     properties stable so there's no width/padding jump mid-animation. */
   body.index-closing #bottom-bar {
-    opacity: 1;
     pointer-events: none;
-    transform: translateY(90px);
     left: 0;
     right: 0;
     padding: 6px var(--pad) 0;
     z-index: 60;
-    background: #fff;
   }
 
   /* Grid overlay padding-bottom clips the scroll area above the bars.
@@ -836,13 +836,16 @@ body.about-to-index.about-open.about-closing #viewport {
     display: flex;
     flex-direction: column;
     transition: transform 0.35s ease;
-    padding-bottom: 60px;
+    padding-bottom: 70px;
   }
   #grid-overlay[hidden] { display: none !important; }
 
-  /* Keep viewer/sidebar in place — the grid overlay (z-index 50) covers them */
+  /* Viewport slides left when index opens, returns from left when index closes */
+  #viewport {
+    transition: transform 0.35s ease;
+  }
   body.index-open #viewport {
-    transform: none;
+    transform: translateX(-100%);
   }
   body.index-open #sidebar-area {
     transform: none;
