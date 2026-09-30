@@ -505,7 +505,7 @@ function bindEvents() {
   });
   aboutLink.addEventListener('click', e => {
     e.stopPropagation();
-    if (document.body.classList.contains('about-open')) {
+    if (document.body.classList.contains('about-open') && !document.body.classList.contains('index-open')) {
       closeAboutVisual();
       history.replaceState(null, '', location.pathname);
     } else if (window.innerWidth <= 768 && document.body.classList.contains('index-open')) {
