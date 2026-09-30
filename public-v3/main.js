@@ -1049,7 +1049,7 @@ function openAboutVisual() {
   closeAboutTimers.forEach(clearTimeout);
   closeAboutTimers = [];
   document.body.classList.remove('about-closing');
-  if (window.innerWidth > 768) crossFadeLabel(aboutLink, 'On view');
+  crossFadeLabel(aboutLink, window.innerWidth > 768 ? 'On view' : 'Back');
   showMetaBack();
   document.body.classList.add('about-open');
 }
@@ -1061,7 +1061,7 @@ function closeAboutVisual() {
   closeAboutTimers = [];
 
   document.body.classList.remove('about-from-index');
-  if (window.innerWidth > 768) crossFadeLabel(aboutLink, 'About');
+  crossFadeLabel(aboutLink, 'About');
   hideMetaBack();
 
   // CSS animations handle everything: content fades (0.4s), viewport slides back (delay 0.4s, 0.35s).
