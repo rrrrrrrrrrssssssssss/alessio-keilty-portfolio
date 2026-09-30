@@ -806,26 +806,37 @@ body.about-to-index.about-open.about-closing #viewport {
     display: none;
   }
 
+  /* Keep viewer content hidden while the bars slide back during close */
+  body.index-closing #about-content,
+  body.index-closing #meta-group {
+    display: none;
+  }
+
+  /* Keep bars in index position during the 0.35s close slide */
+  body.index-closing #bottom-bar {
+    opacity: 1;
+    pointer-events: none;
+    transform: translateY(90px);
+    left: 0;
+    right: 0;
+    padding: 6px var(--pad) 0;
+    z-index: 60;
+    background: #fff;
+  }
+
   /* Grid overlay padding-bottom clips the scroll area above the bars.
      No extra content padding needed — 0 lets content fill to the clip edge. */
   body.index-open #index-cols {
     padding-bottom: 0;
   }
 
-  /* On mobile the index appears as a fade-in overlay on top of the viewer
-     (no slide from the right). The viewer and sidebar stay in place. */
+  /* On mobile the index slides in/out from the right (reuses the global
+     translateX transform). Override duration to match bar animation. */
   #grid-overlay {
     display: flex;
     flex-direction: column;
-    transform: none;
-    opacity: 0;
-    transition: opacity 0.35s ease;
-    /* Clip content area above the bottom bars (About bar top ≈ 82px) */
-    padding-bottom: 80px;
-  }
-  #grid-overlay.open {
-    opacity: 1;
-    transform: none;
+    transition: transform 0.35s ease;
+    padding-bottom: 60px;
   }
   #grid-overlay[hidden] { display: none !important; }
 
