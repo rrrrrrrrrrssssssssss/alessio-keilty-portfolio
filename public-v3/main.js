@@ -32,8 +32,7 @@ const indexTitleBtn= document.getElementById('index-title-btn');
 const indexAbout   = document.getElementById('index-about');
 const indexAuthor  = document.getElementById('index-author');
 const indexNav          = document.getElementById('index-nav');
-const indexPrev         = document.getElementById('index-prev');
-const indexNext         = document.getElementById('index-next');
+const indexNavAbout     = document.getElementById('index-nav-about');
 const indexOnview       = document.getElementById('index-onview');
 const indexOnviewClient = document.getElementById('index-onview-client');
 const indexOnviewTitle  = document.getElementById('index-onview-title');
@@ -493,14 +492,23 @@ function bindEvents() {
     if (e.key === 'Escape') { closeGrid(); closeAbout(); }
   });
 
-  // Expand apre/chiude la griglia (toggle), l'indice la apre soltanto
   expandBtn.addEventListener('click', e => {
     e.stopPropagation();
-    document.body.classList.contains('index-open') ? closeGrid() : openGrid();
+    if (window.innerWidth > 768) {
+      // Desktop: "Viewer" goes to viewer only — no-op if already there
+      if (document.body.classList.contains('index-open')) closeGrid();
+    } else {
+      document.body.classList.contains('index-open') ? closeGrid() : openGrid();
+    }
   });
   galleryIndexBtn.addEventListener('click', e => {
     e.stopPropagation();
-    document.body.classList.contains('index-open') ? closeGrid() : openGrid();
+    if (window.innerWidth > 768) {
+      // Desktop: "Index overview" opens index only — no-op if already there
+      if (!document.body.classList.contains('index-open')) openGrid();
+    } else {
+      document.body.classList.contains('index-open') ? closeGrid() : openGrid();
+    }
     galleryIndexBtn.style.opacity = '';
   });
   aboutLink.addEventListener('click', e => {
@@ -674,39 +682,12 @@ function updateIndexOnview() {
   indexOnviewDesc.hidden = !desc;
 }
 
-/* ─── Index Prev/Next navigation (desktop only) ──────────────────── */
-function updateIndexNav() {
-  const atStart = indexCols.scrollLeft <= 0;
-  const atEnd = indexCols.scrollLeft + indexCols.clientWidth >= indexCols.scrollWidth - 1;
-  indexPrev.classList.toggle('nav-disabled', atStart);
-  indexNext.classList.toggle('nav-disabled', atEnd);
-}
-
-indexPrev.addEventListener('click', () => {
-  const units = indexCols.querySelectorAll('.col-unit');
-  if (!units.length) return;
-  const pad = parseInt(getComputedStyle(indexCols).paddingLeft) || 14;
-  let current = 0;
-  for (let i = 0; i < units.length; i++) {
-    if (units[i].offsetLeft - pad <= indexCols.scrollLeft + 1) current = i;
-  }
-  const target = Math.max(0, current - 1);
-  indexCols.scrollTo({ left: target === 0 ? 0 : units[target].offsetLeft - pad, behavior: 'smooth' });
+/* ─── Index nav About button (desktop only) ─────────────────────── */
+indexNavAbout.addEventListener('click', () => {
+  closeGridVisual(true);
+  if (location.hash !== '#about') history.pushState(null, '', '#about');
+  openAboutVisual();
 });
-
-indexNext.addEventListener('click', () => {
-  const units = indexCols.querySelectorAll('.col-unit');
-  if (!units.length) return;
-  const pad = parseInt(getComputedStyle(indexCols).paddingLeft) || 14;
-  let current = 0;
-  for (let i = 0; i < units.length; i++) {
-    if (units[i].offsetLeft - pad <= indexCols.scrollLeft + 1) current = i;
-  }
-  const target = Math.min(units.length - 1, current + 1);
-  indexCols.scrollTo({ left: units[target].offsetLeft - pad, behavior: 'smooth' });
-});
-
-indexCols.addEventListener('scroll', updateIndexNav, { passive: true });
 
 indexOnview.addEventListener('click', () => {
   closeGridVisual(false);
@@ -813,7 +794,6 @@ function openGridVisual(instant = false) {
     }
 
     indexCols.style.paddingTop = (navTargetTop + indexNav.offsetHeight + 6) + 'px';
-    updateIndexNav();
     updateIndexOnview();
     indexOnview.style.opacity = instant ? '0' : '1';
     indexOnview.style.pointerEvents = 'auto';
@@ -830,7 +810,7 @@ function openGridVisual(instant = false) {
     const PHOTO_DELAY = 300;
     const PHOTO_FADE  = 0.4;
 
-    expandBtn.textContent = 'Go to the viewer';
+    if (isMobile) expandBtn.textContent = 'Go to the viewer';
 
     const photoEls = Array.from(indexCols.querySelectorAll('.col-thumb, .col-meta, .col-gap'));
     photoEls.forEach(el => { el.style.opacity = '0'; el.style.transition = 'none'; });
@@ -970,7 +950,7 @@ function closeGridVisual(keepAbout = false) {
   if (keepAbout && document.body.classList.contains('about-open') && window.innerWidth <= 768) {
     crossFadeLabel(aboutLink, 'Back');
   }
-  crossFadeLabel(expandBtn, 'Expand');
+  if (window.innerWidth <= 768) crossFadeLabel(expandBtn, 'Expand');
   gridHideOnEnd = true;
   const onGridEnd = (e) => {
     if (e.target !== gridOverlay) return;

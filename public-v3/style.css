@@ -329,7 +329,6 @@ body.index-open #bottom-bar {
 }
 
 #grid-close:hover { opacity: 0.3; }
-#index-header:has(#index-title-btn:hover) #grid-close { opacity: 0.3; }
 
 #index-about {
   position: fixed;
@@ -408,8 +407,7 @@ body.index-open #bottom-bar {
 #index-onview:active #index-onview-title,
 #index-onview:active #index-onview-desc { opacity: 0.3; }
 
-#index-prev,
-#index-next {
+#index-nav-about {
   cursor: pointer;
   color: #000;
   transition: opacity 0.2s;
@@ -418,19 +416,10 @@ body.index-open #bottom-bar {
 }
 
 @media (hover: hover) {
-  #index-prev:hover,
-  #index-next:hover { opacity: 0.3; }
+  #index-nav-about:hover { opacity: 0.3; }
 }
 
-#index-prev:active,
-#index-next:active { opacity: 0.3; }
-
-#index-prev.nav-disabled,
-#index-next.nav-disabled {
-  opacity: 0.3;
-  cursor: default;
-  pointer-events: none;
-}
+#index-nav-about:active { opacity: 0.3; }
 
 #index-cols {
   position: absolute;
@@ -632,6 +621,21 @@ body.about-to-index.about-open.about-closing #viewport {
 }
 
 #empty-state a { color: inherit; }
+
+/* ─── Desktop nav: current-page = black, other = grey ────── */
+@media (min-width: 769px) {
+  /* Viewer page: "Index overview" grey/interactive, "Viewer" black/static */
+  #top-bar #gallery-index-btn { opacity: 0.35; }
+  #top-bar #gallery-index-btn:hover { opacity: 1; }
+  #top-bar #expand-btn { opacity: 1; cursor: default; pointer-events: none; }
+  /* Cancel old mutual-hover dimming (expand-btn is now static) */
+  #top-bar:has(#gallery-index-btn:hover) #expand-btn { opacity: 1; }
+
+  /* Index page: "Index overview" black/static, "Viewer" grey/interactive */
+  #index-title-btn { cursor: default; pointer-events: none; }
+  #grid-close { opacity: 0.35; }
+  #grid-close:hover { opacity: 1; }
+}
 
 /* ─── Mobile ──────────────────────────────────────────────── */
 @media (max-width: 768px) {
