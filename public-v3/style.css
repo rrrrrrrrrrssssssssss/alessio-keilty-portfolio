@@ -690,6 +690,8 @@ body.about-to-index.about-open.about-closing #viewport {
   /* Viewer: Index overview grey, Viewer black */
   #top-bar #gallery-index-btn { opacity: 0.35; }
   #top-bar #expand-btn { opacity: 1; }
+  /* About: "Back to" black */
+  body.about-open #top-bar #gallery-index-btn { opacity: 1; }
 
 
   #gallery-index-btn,
