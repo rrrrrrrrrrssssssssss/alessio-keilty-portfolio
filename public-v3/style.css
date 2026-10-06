@@ -635,6 +635,14 @@ body.about-to-index.about-open.about-closing #viewport {
   #index-title-btn { cursor: default; pointer-events: none; }
   #grid-close { opacity: 0.35; }
   #grid-close:hover { opacity: 1; }
+
+  /* About page: both grey/interactive */
+  body.about-open #top-bar #expand-btn {
+    opacity: 0.35;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+  body.about-open #top-bar #expand-btn:hover { opacity: 1; }
 }
 
 /* ─── Mobile ──────────────────────────────────────────────── */

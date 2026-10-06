@@ -495,8 +495,8 @@ function bindEvents() {
   expandBtn.addEventListener('click', e => {
     e.stopPropagation();
     if (window.innerWidth > 768) {
-      // Desktop: "Viewer" goes to viewer only — no-op if already there
       if (document.body.classList.contains('index-open')) closeGrid();
+      else if (document.body.classList.contains('about-open')) closeAbout();
     } else {
       document.body.classList.contains('index-open') ? closeGrid() : openGrid();
     }
@@ -889,7 +889,7 @@ function openGridVisual(instant = false) {
     });
     return;
   }
-  crossFadeLabel(expandBtn, 'Go to the viewer');
+  if (window.innerWidth <= 768) crossFadeLabel(expandBtn, 'Go to the viewer');
 }
 
 function closeGridVisual(keepAbout = false) {
