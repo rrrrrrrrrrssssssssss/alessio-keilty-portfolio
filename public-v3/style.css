@@ -685,15 +685,12 @@ body.about-to-index.about-open.about-closing #viewport {
     flex-direction: column;
     align-items: flex-start;
     gap: 0;
-    transition: opacity 0.4s ease;
   }
 
   /* Viewer: Index overview grey, Viewer black */
   #top-bar #gallery-index-btn { opacity: 0.35; }
   #top-bar #expand-btn { opacity: 1; }
 
-  body.about-open #top-bar { opacity: 0; pointer-events: none; }
-  body.index-closing #top-bar { opacity: 0; pointer-events: none; transition: opacity 0s; }
 
   #gallery-index-btn,
   #expand-btn {
@@ -757,8 +754,6 @@ body.about-to-index.about-open.about-closing #viewport {
 
   #meta-back { font-size: 0; line-height: 0; }
   #meta-back::before { content: 'On view'; font-size: var(--fs); letter-spacing: 0.030em; line-height: 1.2; }
-  body.about-open #meta-back { font-size: var(--fs); letter-spacing: 0.030em; line-height: 1.2; cursor: pointer; }
-  body.about-open #meta-back::before { content: none; }
 
   /* About content su mobile: lascia spazio per scorrere */
   .contact-row { line-height: 1.2; }

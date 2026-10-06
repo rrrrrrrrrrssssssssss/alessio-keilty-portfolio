@@ -497,9 +497,14 @@ function bindEvents() {
     e.stopPropagation();
     if (window.innerWidth > 768) {
       if (document.body.classList.contains('index-open')) closeGrid();
-      else if (document.body.classList.contains('about-open')) closeAbout();
+      else if (document.body.classList.contains('about-open')) {
+        // Desktop about → viewer: close directly, don't history.back() which would reopen index
+        closeAboutVisual();
+        history.replaceState(null, '', location.pathname);
+      }
     } else {
-      document.body.classList.contains('index-open') ? closeGrid() : openGrid();
+      if (document.body.classList.contains('about-open')) closeAbout();
+      else document.body.classList.contains('index-open') ? closeGrid() : openGrid();
     }
   });
   galleryIndexBtn.addEventListener('click', e => {
@@ -508,7 +513,8 @@ function bindEvents() {
       // Desktop: "Index overview" opens index only — no-op if already there
       if (!document.body.classList.contains('index-open')) openGrid();
     } else {
-      document.body.classList.contains('index-open') ? closeGrid() : openGrid();
+      if (document.body.classList.contains('about-open')) closeAbout();
+      else document.body.classList.contains('index-open') ? closeGrid() : openGrid();
     }
     galleryIndexBtn.style.opacity = '';
   });
@@ -741,11 +747,13 @@ function openGridVisual(instant = false) {
       const metaGroupEl = document.getElementById('meta-group');
       metaGroupEl.style.transition = 'none';
       void metaGroupEl.offsetHeight; // commit transition:none before index-open fires
-      // Reset about-link label to "About" if we're entering index from about
+      // Reset labels if we're entering index from about
       if (document.body.classList.contains('about-open')) {
         aboutLink.textContent = 'About';
         aboutLink.style.transition = '';
         aboutLink.style.opacity = '';
+        crossFadeLabel(galleryIndexBtn, 'Index overview');
+        crossFadeLabel(expandBtn, 'Viewer');
       }
       document.body.classList.add('index-open');
       gridOverlay.classList.add('open');
@@ -911,7 +919,13 @@ function closeGridVisual(keepAbout = false) {
     aboutLink.style.transition = '';
     aboutLink.style.opacity = '';
     metaBack.style.cssText = '';
-    metaBack.innerHTML = 'Back to';
+    // Restore top-bar labels in case about changed them on mobile
+    galleryIndexBtn.textContent = 'Index overview';
+    galleryIndexBtn.style.transition = '';
+    galleryIndexBtn.style.opacity = '';
+    expandBtn.textContent = 'Viewer';
+    expandBtn.style.transition = '';
+    expandBtn.style.opacity = '';
     indexAbout.style.opacity = '0';
     indexAbout.style.pointerEvents = '';
   }
@@ -1059,11 +1073,14 @@ function openAboutVisual() {
   closeAboutTimers.forEach(clearTimeout);
   closeAboutTimers = [];
   document.body.classList.remove('about-closing');
-  if (window.innerWidth > 768) crossFadeLabel(aboutLink, 'On view');
-  if (window.innerWidth <= 768) {
-    metaBack.innerHTML = 'Back to<br>' + (aboutSource === 'index' ? 'Index overview' : 'Viewer');
+  if (window.innerWidth > 768) {
+    crossFadeLabel(aboutLink, 'On view');
+    showMetaBack();
+  } else {
+    // Top-bar becomes "Back to / [source]" on mobile about
+    crossFadeLabel(galleryIndexBtn, 'Back to');
+    crossFadeLabel(expandBtn, aboutSource === 'index' ? 'Index overview' : 'Viewer');
   }
-  showMetaBack();
   document.body.classList.add('about-open');
 }
 
@@ -1075,8 +1092,13 @@ function closeAboutVisual() {
 
   document.body.classList.remove('about-from-index');
   crossFadeLabel(aboutLink, 'About');
-  metaBack.innerHTML = 'Back to';
-  hideMetaBack();
+  if (window.innerWidth > 768) {
+    hideMetaBack();
+  } else {
+    // Restore top-bar labels from "Back to / [source]" back to nav labels
+    crossFadeLabel(galleryIndexBtn, 'Index overview');
+    crossFadeLabel(expandBtn, 'Viewer');
+  }
 
   // CSS animations handle everything: content fades (0.4s), viewport slides back (delay 0.4s, 0.35s).
   // A single class addition triggers both; classes are removed after all animations complete.
