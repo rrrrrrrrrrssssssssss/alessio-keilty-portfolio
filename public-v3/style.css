@@ -575,11 +575,13 @@ body.about-from-index:not(.about-closing) #viewport {
   transform: translateX(100vw);
 }
 
-/* Mobile: skip viewport slide-back when returning from About to the index
-   (grid overlay will cover the viewport anyway) */
+/* Mobile: skip viewport slide-back when returning from About to the index.
+   Snap to -100vw (same as body.index-open) so the grid slides over white
+   body background instead of over the viewer photo. */
 body.about-to-index.about-open.about-closing #viewport {
   animation: none;
-  transform: translateX(0);
+  transform: translateX(-100vw);
+  transition: none;
 }
 
 
@@ -843,6 +845,12 @@ body.about-to-index.about-open.about-closing #viewport {
     display: none !important;
   }
   body.index-closing #meta-group {
+    opacity: 0 !important;
+    pointer-events: none;
+  }
+  /* Suppress meta-group ("On view" + artwork info) while about is open —
+     prevents it flashing into view during the index→about transition. */
+  body.about-open #meta-group {
     opacity: 0 !important;
     pointer-events: none;
   }
