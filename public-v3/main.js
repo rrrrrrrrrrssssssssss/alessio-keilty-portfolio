@@ -1077,9 +1077,10 @@ function openAboutVisual() {
     crossFadeLabel(aboutLink, 'On view');
     showMetaBack();
   } else {
-    // Top-bar becomes "Back to / [source]" on mobile about
+    crossFadeLabel(aboutLink, 'Close');
     crossFadeLabel(galleryIndexBtn, 'Back to');
     crossFadeLabel(expandBtn, aboutSource === 'index' ? 'Index overview' : 'Viewer');
+    showMetaBack();
   }
   document.body.classList.add('about-open');
 }
@@ -1095,9 +1096,9 @@ function closeAboutVisual() {
   if (window.innerWidth > 768) {
     hideMetaBack();
   } else {
-    // Restore top-bar labels from "Back to / [source]" back to nav labels
     crossFadeLabel(galleryIndexBtn, 'Index overview');
     crossFadeLabel(expandBtn, 'Viewer');
+    hideMetaBack();
   }
 
   // CSS animations handle everything: content fades (0.4s), viewport slides back (delay 0.4s, 0.35s).
