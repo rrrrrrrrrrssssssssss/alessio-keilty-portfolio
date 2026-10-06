@@ -675,16 +675,24 @@ body.about-to-index.about-open.about-closing #viewport {
     display: block;
   }
 
-  /* Top bar (Index + Expand) → in basso a sinistra, colonna */
+  /* Top bar → top-right on viewer, bottom on index */
   #top-bar {
-    top: auto;
-    right: auto;
-    left: var(--pad);
-    bottom: var(--pad);
+    top: var(--pad);
+    right: var(--pad);
+    left: auto;
+    bottom: auto;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-end;
     gap: 0;
+    transition: opacity 0.4s ease;
   }
+
+  /* Viewer: Index overview grey, Viewer black */
+  #top-bar #gallery-index-btn { opacity: 0.35; }
+  #top-bar #expand-btn { opacity: 1; }
+
+  body.about-open #top-bar { opacity: 0; pointer-events: none; }
+  body.index-closing #top-bar { opacity: 0; pointer-events: none; transition: opacity 0s; }
 
   #gallery-index-btn,
   #expand-btn {
@@ -748,6 +756,8 @@ body.about-to-index.about-open.about-closing #viewport {
 
   #meta-back { font-size: 0; line-height: 0; }
   #meta-back::before { content: 'On view'; font-size: var(--fs); letter-spacing: 0.030em; line-height: 1.2; }
+  body.about-open #meta-back { font-size: var(--fs); letter-spacing: 0.030em; line-height: 1.2; cursor: pointer; }
+  body.about-open #meta-back::before { content: none; }
 
   /* About content su mobile: lascia spazio per scorrere */
   .contact-row { line-height: 1.2; }
@@ -790,11 +800,17 @@ body.about-to-index.about-open.about-closing #viewport {
     opacity: 1;
     pointer-events: auto;
     z-index: 60;
+    top: auto;
     left: 0;
     right: 0;
     bottom: 0;
+    align-items: flex-start;
     padding: 7px var(--pad) var(--pad);
   }
+
+  /* Index: Index overview black, Viewer grey */
+  body.index-open #top-bar #gallery-index-btn { opacity: 1; }
+  body.index-open #top-bar #expand-btn { opacity: 0.35; }
 
   /* Hide mobile text bars during data loading (body.preload in HTML); JS removes
      this class and fades them in once the index content is ready. */

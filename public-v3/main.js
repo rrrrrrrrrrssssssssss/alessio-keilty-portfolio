@@ -7,6 +7,7 @@ const crossFadeTimers = new WeakMap();
 let sidebarScrollRaf = null; // rAF id for the active sidebar scroll animation
 let indexWasPushed = false;  // true only when index was opened via pushState (user nav), not replaceState (landing)
 let gridHideOnEnd  = false;  // guards the transitionend→hidden so a quick reopen can't get hidden by a stale close
+let aboutSource    = 'viewer'; // 'viewer' | 'index' — where the user navigated from when about opened
 
 /* ─── DOM refs ───────────────────────────────────────────────────── */
 const track       = document.getElementById('track');
@@ -514,12 +515,17 @@ function bindEvents() {
   aboutLink.addEventListener('click', e => {
     e.stopPropagation();
     if (document.body.classList.contains('about-open') && !document.body.classList.contains('index-open')) {
-      closeAboutVisual();
-      history.replaceState(null, '', location.pathname);
+      if (window.innerWidth <= 768) {
+        closeAbout();
+      } else {
+        closeAboutVisual();
+        history.replaceState(null, '', location.pathname);
+      }
     } else if (window.innerWidth <= 768 && document.body.classList.contains('index-open')) {
       // Mobile: About from index — same slide-out as going to viewer.
       // about-from-index suppresses the viewport animation (CSS), viewport.transition
       // must be 'none' when index-open is removed so it snaps (not slides) to 100vw.
+      aboutSource = 'index';
       document.body.classList.add('about-from-index');
       viewport.style.transition = 'none';
       void viewport.getBoundingClientRect();
@@ -548,6 +554,7 @@ function bindEvents() {
     } else if (gridOverlay.classList.contains('open')) {
       if (window.innerWidth <= 768) {
         // Mobile index → About: same slide-out as going to viewer.
+        aboutSource = 'index';
         document.body.classList.add('about-from-index');
         viewport.style.transition = 'none';
         void viewport.getBoundingClientRect();
@@ -566,10 +573,13 @@ function bindEvents() {
     }
   });
   document.getElementById('meta-back').addEventListener('click', () => {
-    // "On view" always goes to the viewer, not back through history
-    // (history.back() would reopen the index if coming from there).
-    closeAboutVisual();
-    if (location.hash === '#about') history.replaceState(null, '', location.pathname);
+    if (window.innerWidth <= 768) {
+      closeAbout();
+    } else {
+      // Desktop "On view" always goes to the viewer, not back through history.
+      closeAboutVisual();
+      if (location.hash === '#about') history.replaceState(null, '', location.pathname);
+    }
   });
   document.getElementById('about-bio').addEventListener('click', closeAbout);
 
@@ -638,6 +648,7 @@ function closeGrid(keepAbout = false) {
 }
 
 function openAbout() {
+  aboutSource = 'viewer';
   if (location.hash !== '#about') history.pushState(null, '', '#about');
   openAboutVisual();
 }
@@ -810,8 +821,6 @@ function openGridVisual(instant = false) {
     const PHOTO_DELAY = 300;
     const PHOTO_FADE  = 0.4;
 
-    if (isMobile) expandBtn.textContent = 'Go to the viewer';
-
     const photoEls = Array.from(indexCols.querySelectorAll('.col-thumb, .col-meta, .col-gap'));
     photoEls.forEach(el => { el.style.opacity = '0'; el.style.transition = 'none'; });
 
@@ -889,7 +898,6 @@ function openGridVisual(instant = false) {
     });
     return;
   }
-  if (window.innerWidth <= 768) crossFadeLabel(expandBtn, 'Go to the viewer');
 }
 
 function closeGridVisual(keepAbout = false) {
@@ -904,6 +912,7 @@ function closeGridVisual(keepAbout = false) {
     aboutLink.style.transition = '';
     aboutLink.style.opacity = '';
     metaBack.style.cssText = '';
+    metaBack.innerHTML = 'Back to';
     indexAbout.style.opacity = '0';
     indexAbout.style.pointerEvents = '';
   }
@@ -948,9 +957,8 @@ function closeGridVisual(keepAbout = false) {
   document.body.classList.remove('index-open');
   // Returning to about from index: restore "Back" label (was reset to "About" on index open)
   if (keepAbout && document.body.classList.contains('about-open') && window.innerWidth <= 768) {
-    crossFadeLabel(aboutLink, 'Back');
+    crossFadeLabel(aboutLink, 'About');
   }
-  if (window.innerWidth <= 768) crossFadeLabel(expandBtn, 'Expand');
   gridHideOnEnd = true;
   const onGridEnd = (e) => {
     if (e.target !== gridOverlay) return;
@@ -1052,7 +1060,10 @@ function openAboutVisual() {
   closeAboutTimers.forEach(clearTimeout);
   closeAboutTimers = [];
   document.body.classList.remove('about-closing');
-  crossFadeLabel(aboutLink, window.innerWidth > 768 ? 'On view' : 'Back');
+  if (window.innerWidth > 768) crossFadeLabel(aboutLink, 'On view');
+  if (window.innerWidth <= 768) {
+    metaBack.innerHTML = 'Back to<br>' + (aboutSource === 'index' ? 'Index overview' : 'Viewer');
+  }
   showMetaBack();
   document.body.classList.add('about-open');
 }
@@ -1065,6 +1076,7 @@ function closeAboutVisual() {
 
   document.body.classList.remove('about-from-index');
   crossFadeLabel(aboutLink, 'About');
+  metaBack.innerHTML = 'Back to';
   hideMetaBack();
 
   // CSS animations handle everything: content fades (0.4s), viewport slides back (delay 0.4s, 0.35s).
