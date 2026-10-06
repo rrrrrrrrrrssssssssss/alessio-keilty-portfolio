@@ -280,7 +280,6 @@ body.index-open #bottom-bar {
 #grid-overlay {
   position: fixed;
   inset: 0;
-  background: #fff;
   z-index: 50;
   transform: translateX(100%);
   transition: transform 0.5s ease;
@@ -636,13 +635,15 @@ body.about-to-index.about-open.about-closing #viewport {
   #grid-close { opacity: 0.35; }
   #grid-close:hover { opacity: 1; }
 
-  /* About page: both grey/interactive */
+  /* About page: both grey/interactive, independent hover */
   body.about-open #top-bar #expand-btn {
     opacity: 0.35;
     cursor: pointer;
     pointer-events: auto;
   }
   body.about-open #top-bar #expand-btn:hover { opacity: 1; }
+  /* Cancel mutual-hover dimming: hovering Index overview must not dim Viewer */
+  body.about-open #top-bar:has(#gallery-index-btn:hover) #expand-btn { opacity: 0.35; }
 }
 
 /* ─── Mobile ──────────────────────────────────────────────── */
@@ -675,14 +676,14 @@ body.about-to-index.about-open.about-closing #viewport {
     display: block;
   }
 
-  /* Top bar → top-right on viewer, bottom on index */
+  /* Top bar → bottom-left on viewer, full-width bottom on index */
   #top-bar {
-    top: var(--pad);
-    right: var(--pad);
-    left: auto;
-    bottom: auto;
+    top: auto;
+    right: auto;
+    left: var(--pad);
+    bottom: var(--pad);
     flex-direction: column;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 0;
     transition: opacity 0.4s ease;
   }
@@ -792,19 +793,15 @@ body.about-to-index.about-open.about-closing #viewport {
   .col-thumb:active img { opacity: 0.3; }
 
   /* Mobile index overlay */
-  /* Top bar stays fixed and visible above the index overlay; only the
-     Expand/Back label crossfades, nothing slides during the animation.
-     Full-bleed white backdrop (edge to edge, down to the screen bottom)
-     keeps the labels readable over the photo grid. */
+  /* Top bar stays fixed and visible above the index overlay;
+     nothing slides or crossfades during the animation. */
   body.index-open #top-bar {
     opacity: 1;
     pointer-events: auto;
     z-index: 60;
-    top: auto;
     left: 0;
     right: 0;
     bottom: 0;
-    align-items: flex-start;
     padding: 7px var(--pad) var(--pad);
   }
 

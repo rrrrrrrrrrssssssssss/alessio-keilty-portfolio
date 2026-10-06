@@ -749,7 +749,6 @@ function openGridVisual(instant = false) {
       }
       document.body.classList.add('index-open');
       gridOverlay.classList.add('open');
-      crossFadeLabel(expandBtn, 'Go to the viewer');
       // Restore CSS transition on meta-group so it fades in on close.
       requestAnimationFrame(() => {
         metaGroupEl.style.transition = '';
